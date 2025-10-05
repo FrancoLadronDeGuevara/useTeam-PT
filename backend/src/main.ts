@@ -10,6 +10,7 @@ async function bootstrap() {
     },
   });
 
+  // Habilitar validación global
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -18,13 +19,14 @@ async function bootstrap() {
     }),
   );
 
+  // Prefijo global para todas las rutas
   app.setGlobalPrefix('api');
 
   const port = process.env.PORT || 3000;
   await app.listen(port);
 
-  console.log(`🚀 Backend running on: http://localhost:${port}`);
-  console.log(`📡 WebSocket server ready on: ws://localhost:${port}`);
+  console.log(`Backend running on: http://localhost:${port}`);
+  console.log(`WebSocket server ready on: ws://localhost:${port}`);
 }
 
 bootstrap();
