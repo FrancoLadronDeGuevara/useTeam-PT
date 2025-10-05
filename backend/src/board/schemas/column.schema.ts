@@ -21,5 +21,4 @@ export class Column extends Document {
 
 export const ColumnSchema = SchemaFactory.createForClass(Column);
 
-// Índice para mejorar queries por board
 ColumnSchema.index({ boardId: 1, position: 1 });
