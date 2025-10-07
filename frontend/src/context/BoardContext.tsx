@@ -38,7 +38,12 @@ interface BoardContextType {
   fetchBoards: () => Promise<void>;
   fetchBoardWithData: (boardId: string) => Promise<void>;
   createBoard: (data: CreateBoardDto) => Promise<IBoard>;
+  updateBoard: (
+    id: string,
+    updates: { title: string; description?: string }
+  ) => Promise<void>;
   createColumn: (data: CreateColumnDto) => Promise<void>;
+  updateColumn: (id: string, updates: { title: string }) => Promise<void>;
   createCard: (data: CreateCardDto) => Promise<void>;
   updateCard: (id: string, updates: UpdateCardDto) => Promise<void>;
   deleteCard: (id: string) => Promise<void>;
@@ -161,6 +166,50 @@ export const BoardProvider = ({ children }: BoardProviderProps) => {
   );
 
   /**
+   * Actualiza un tablero existente.
+   */
+  const updateBoard = useCallback(
+    async (id: string, updates: { title: string; description?: string }) => {
+      try {
+        const response = await boardAPI.update(id, updates);
+
+        // Actualizar en la lista de tableros
+        setBoards((prev) =>
+          prev.map((board) =>
+            board._id === id ? { ...board, ...response.data } : board
+          )
+        );
+
+        // Actualizar el tablero actual si es el que estamos viendo
+        if (currentBoard && currentBoard._id === id) {
+          setCurrentBoard({
+            ...currentBoard,
+            title: response.data.title,
+            description: response.data.description,
+          });
+        }
+
+        // Emitir evento WebSocket para sincronizar con otros usuarios
+        const socket = websocketService.connect();
+        if (socket.connected) {
+          websocketService.updateBoard(id, updates);
+        } else {
+          socket.on("connect", () => {
+            websocketService.updateBoard(id, updates);
+          });
+        }
+
+        toast.success("Tablero actualizado exitosamente");
+      } catch (error) {
+        toast.error("Error actualizando tablero");
+        console.error("Error updating board:", error);
+        throw error;
+      }
+    },
+    [currentBoard, setCurrentBoard]
+  );
+
+  /**
    * Crea una nueva columna en un tablero.
    * Actualiza el estado local y sincroniza con otras pestañas.
    */
@@ -191,6 +240,47 @@ export const BoardProvider = ({ children }: BoardProviderProps) => {
       }
     },
     [currentBoard, emitTabEvent]
+  );
+
+  /**
+   * Actualiza una columna existente.
+   */
+  const updateColumn = useCallback(
+    async (id: string, updates: { title: string }) => {
+      try {
+        const response = await columnAPI.update(id, updates);
+
+        // Actualizar el tablero actual si es el que estamos viendo
+        if (currentBoard) {
+          setCurrentBoard((prev) => {
+            if (!prev) return prev;
+            return {
+              ...prev,
+              columns: prev.columns.map((col) =>
+                col._id === id ? { ...col, ...response.data } : col
+              ),
+            };
+          });
+        }
+
+        // Emitir evento WebSocket para sincronizar con otros usuarios
+        const socket = websocketService.connect();
+        if (socket.connected) {
+          websocketService.updateColumn(id, updates);
+        } else {
+          socket.on("connect", () => {
+            websocketService.updateColumn(id, updates);
+          });
+        }
+
+        toast.success("Columna actualizada exitosamente");
+      } catch (error) {
+        toast.error("Error actualizando columna");
+        console.error("Error updating column:", error);
+        throw error;
+      }
+    },
+    [currentBoard]
   );
 
   /**
@@ -472,15 +562,9 @@ export const BoardProvider = ({ children }: BoardProviderProps) => {
   );
 
   /**
-   * Conecta el WebSocket cuando se monta el provider.
-   * Se desconecta automáticamente al desmontar.
+   * El WebSocket se conecta automáticamente cuando se necesita.
+   * No necesitamos conectarlo aquí para evitar múltiples conexiones.
    */
-  useEffect(() => {
-    websocketService.connect();
-    return () => {
-      websocketService.disconnect();
-    };
-  }, []);
 
   /**
    * Listener para sincronización entre pestañas usando localStorage.
@@ -762,17 +846,71 @@ export const BoardProvider = ({ children }: BoardProviderProps) => {
       toast.success("Nueva columna creada", { icon: "➕" });
     };
 
+    // Listener: Tablero actualizado por otro usuario
+    const handleBoardUpdated = (board: {
+      id: string;
+      title: string;
+      description?: string;
+    }) => {
+      console.log("WebSocket: Recibida actualización de tablero", board);
+
+      // Actualizar en la lista de tableros
+      setBoards((prev) =>
+        prev.map((b) =>
+          b._id === board.id
+            ? { ...b, title: board.title, description: board.description || "" }
+            : b
+        )
+      );
+
+      // Actualizar el tablero actual si es el que estamos viendo
+      setCurrentBoard((prev) => {
+        if (!prev || prev._id !== board.id) return prev;
+        return {
+          ...prev,
+          title: board.title,
+          description: board.description || "",
+        };
+      });
+
+      toast.success("Tablero actualizado por otro usuario", { icon: "✏️" });
+    };
+
+    // Listener: Columna actualizada por otro usuario
+    const handleColumnUpdated = (column: {
+      _id: string;
+      title: string;
+      boardId: string;
+    }) => {
+      console.log("WebSocket: Recibida actualización de columna", column);
+
+      // Actualizar el tablero actual si es el que estamos viendo
+      setCurrentBoard((prev) => {
+        if (!prev || prev._id !== column.boardId) return prev;
+        return {
+          ...prev,
+          columns: prev.columns.map((col) =>
+            col._id === column._id ? { ...col, title: column.title } : col
+          ),
+        };
+      });
+
+      toast.success("Columna actualizada por otro usuario", { icon: "✏️" });
+    };
+
     // Registrar listeners
     websocketService.on(WS_SERVER_EVENTS.USER_CONNECTED, handleUserConnected);
     websocketService.on(
       WS_SERVER_EVENTS.USER_DISCONNECTED,
       handleUserDisconnected
     );
+    websocketService.on(WS_SERVER_EVENTS.BOARD_UPDATED, handleBoardUpdated);
     websocketService.on(WS_SERVER_EVENTS.CARD_CREATED, handleCardCreated);
     websocketService.on(WS_SERVER_EVENTS.CARD_UPDATED, handleCardUpdated);
     websocketService.on(WS_SERVER_EVENTS.CARD_DELETED, handleCardDeleted);
     websocketService.on(WS_SERVER_EVENTS.CARD_MOVED, handleCardMoved);
     websocketService.on(WS_SERVER_EVENTS.COLUMN_CREATED, handleColumnCreated);
+    websocketService.on(WS_SERVER_EVENTS.COLUMN_UPDATED, handleColumnUpdated);
     websocketService.on(
       WS_SERVER_EVENTS.COLUMN_DELETED,
       ({ id }: { id: string }) => {
@@ -788,11 +926,13 @@ export const BoardProvider = ({ children }: BoardProviderProps) => {
       window.removeEventListener("storage", handleStorage);
       websocketService.removeAllListeners(WS_SERVER_EVENTS.USER_CONNECTED);
       websocketService.removeAllListeners(WS_SERVER_EVENTS.USER_DISCONNECTED);
+      websocketService.removeAllListeners(WS_SERVER_EVENTS.BOARD_UPDATED);
       websocketService.removeAllListeners(WS_SERVER_EVENTS.CARD_CREATED);
       websocketService.removeAllListeners(WS_SERVER_EVENTS.CARD_UPDATED);
       websocketService.removeAllListeners(WS_SERVER_EVENTS.CARD_DELETED);
       websocketService.removeAllListeners(WS_SERVER_EVENTS.CARD_MOVED);
       websocketService.removeAllListeners(WS_SERVER_EVENTS.COLUMN_CREATED);
+      websocketService.removeAllListeners(WS_SERVER_EVENTS.COLUMN_UPDATED);
       websocketService.removeAllListeners(WS_SERVER_EVENTS.COLUMN_DELETED);
     };
   }, [fetchBoardWithData]);
@@ -805,7 +945,9 @@ export const BoardProvider = ({ children }: BoardProviderProps) => {
     fetchBoards,
     fetchBoardWithData,
     createBoard,
+    updateBoard,
     createColumn,
+    updateColumn,
     createCard,
     updateCard,
     deleteCard,

@@ -4,9 +4,11 @@ import {
   SortableContext,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus } from "lucide-react";
 import Card from "./Card";
 import CreateCardModal from "./CreateCardModal";
+import EditColumnModal from "./EditColumnModal";
+import KebabMenu from "../UI/KebabMenu";
 import type { IColumnWithCards } from "../../types";
 import { useBoardContext } from "../../context/BoardContext";
 
@@ -16,12 +18,27 @@ interface ColumnProps {
 
 const Column = ({ column }: ColumnProps) => {
   const [showCreateCardModal, setShowCreateCardModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const { deleteColumn } = useBoardContext();
   const { setNodeRef } = useDroppable({
     id: column._id,
   });
 
   const cardIds = column.cards.map((card) => card._id);
+
+  const handleDeleteColumn = async () => {
+    if (
+      window.confirm(
+        "¿Deseas eliminar esta columna? Se eliminarán todas las tarjetas que contenga."
+      )
+    ) {
+      await deleteColumn(column._id);
+    }
+  };
+
+  const handleEditColumn = () => {
+    setShowEditModal(true);
+  };
 
   return (
     <div className="flex-shrink-0 w-80">
@@ -34,21 +51,12 @@ const Column = ({ column }: ColumnProps) => {
               {column.cards.length}
             </span>
           </h3>
-          <button
-            onClick={async () => {
-              if (
-                window.confirm(
-                  "Deseas eliminar esta columna? Se eliminarán sus tarjetas."
-                )
-              ) {
-                await deleteColumn(column._id);
-              }
-            }}
-            className="p-1 text-slate-400 dark:text-slate-500 hover:text-red-500 dark:hover:text-red-400 transition-colors"
-            title="Delete column"
-          >
-            <Trash2 size={16} />
-          </button>
+          <KebabMenu
+            onEdit={handleEditColumn}
+            onDelete={handleDeleteColumn}
+            editLabel="Editar columna"
+            deleteLabel="Eliminar columna"
+          />
         </div>
 
         {/* Cards Container */}
@@ -85,6 +93,14 @@ const Column = ({ column }: ColumnProps) => {
         <CreateCardModal
           columnId={column._id}
           onClose={() => setShowCreateCardModal(false)}
+        />
+      )}
+
+      {/* Edit Column Modal */}
+      {showEditModal && (
+        <EditColumnModal
+          column={column}
+          onClose={() => setShowEditModal(false)}
         />
       )}
     </div>
