@@ -20,9 +20,17 @@ import {
   MoveCardDto,
 } from './dto/board.dto';
 
+/**
+ * Controlador REST para operaciones de tableros.
+ *
+ * Proporciona endpoints HTTP para todas las operaciones CRUD
+ * de tableros, columnas y tarjetas.
+ */
 @Controller('boards')
 export class BoardController {
   constructor(private readonly boardService: BoardService) {}
+
+  // ============ ENDPOINTS DE TABLEROS ============
 
   @Post()
   createBoard(@Body() createBoardDto: CreateBoardDto) {
@@ -55,6 +63,8 @@ export class BoardController {
     return this.boardService.deleteBoard(id);
   }
 
+  // ============ ENDPOINTS DE COLUMNAS ============
+
   @Post('columns')
   createColumn(@Body() createColumnDto: CreateColumnDto) {
     return this.boardService.createColumn(createColumnDto);
@@ -75,6 +85,8 @@ export class BoardController {
   deleteColumn(@Param('id') id: string) {
     return this.boardService.deleteColumn(id);
   }
+
+  // ============ ENDPOINTS DE TARJETAS ============
 
   @Post('cards')
   createCard(@Body() createCardDto: CreateCardDto) {
@@ -105,5 +117,12 @@ export class BoardController {
   @Post('cards/move')
   moveCard(@Body() moveCardDto: MoveCardDto) {
     return this.boardService.moveCard(moveCardDto);
+  }
+
+  // ============ ENDPOINTS DE UTILIDADES ============
+
+  @Delete('cards/cleanup')
+  async cleanupCards() {
+    return this.boardService.deleteAllCards();
   }
 }

@@ -92,73 +92,122 @@ export class BoardService {
     return column;
   }
 
+  /**
+   * Elimina una columna y todas sus tarjetas asociadas (eliminación en cascada).
+   * Esto asegura la integridad de los datos removiendo todas las tarjetas dependientes.
+   */
   async deleteColumn(id: string): Promise<void> {
-    await this.cardModel.deleteMany({ columnId: id }).exec();
+    // Primero eliminamos todas las tarjetas de esta columna
+    await this.cardModel.deleteMany({ columnId: new Types.ObjectId(id) }).exec();
 
+    // Después eliminamos la columna en sí
     const result = await this.columnModel.findByIdAndDelete(id).exec();
     if (!result) {
-      throw new NotFoundException(`Column with ID ${id} not found`);
+      throw new NotFoundException(`No se encontró la columna con ID ${id}`);
     }
   }
 
+  /**
+   * Crea una nueva tarjeta en la columna especificada.
+   * Asigna automáticamente la posición si no se proporciona (la agrega al final).
+   * Convierte el columnId de string a ObjectId para almacenamiento en la base de datos.
+   */
   async createCard(createCardDto: CreateCardDto): Promise<Card> {
+    // Verificamos que la columna existe
     const column = await this.columnModel.findById(createCardDto.columnId).exec();
     if (!column) {
-      throw new NotFoundException(`Column with ID ${createCardDto.columnId} not found`);
+      throw new NotFoundException(`No se encontró la columna con ID ${createCardDto.columnId}`);
     }
 
+    // Si no se especifica posición, la asignamos automáticamente al final
     if (createCardDto.position === undefined) {
-      const lastCard = await this.cardModel
-        .findOne({ columnId: createCardDto.columnId })
+      const ultimaTarjeta = await this.cardModel
+        .findOne({ columnId: new Types.ObjectId(createCardDto.columnId) })
         .sort({ position: -1 })
         .exec();
-      createCardDto.position = lastCard ? lastCard.position + 1 : 0;
+      createCardDto.position = ultimaTarjeta ? ultimaTarjeta.position + 1 : 0;
     }
 
-    const card = new this.cardModel(createCardDto);
+    // Creamos la tarjeta convirtiendo el columnId a ObjectId
+    const card = new this.cardModel({
+      ...createCardDto,
+      columnId: new Types.ObjectId(createCardDto.columnId),
+    });
     return card.save();
   }
 
+  /**
+   * Obtiene todas las tarjetas de una columna específica, ordenadas por posición.
+   */
   async getCardsByColumnId(columnId: string): Promise<Card[]> {
-    return this.cardModel.find({ columnId }).sort({ position: 1 }).exec();
+    return this.cardModel
+      .find({ columnId: new Types.ObjectId(columnId) })
+      .sort({ position: 1 })
+      .exec();
   }
 
+  /**
+   * Obtiene todas las tarjetas de un tablero (de todas sus columnas).
+   * Útil para operaciones que necesitan ver todas las tarjetas del tablero.
+   */
   async getCardsByBoardId(boardId: string): Promise<Card[]> {
-    const columns = await this.columnModel.find({ boardId }).exec();
-    const columnIds = columns.map((col) => col._id);
+    const columnas = await this.columnModel.find({ boardId }).exec();
+    const columnIds = columnas.map((col) => col._id);
     return this.cardModel
       .find({ columnId: { $in: columnIds } })
       .sort({ position: 1 })
       .exec();
   }
 
+  /**
+   * Elimina todas las tarjetas de la base de datos.
+   * Solo para operaciones de limpieza/debug.
+   */
+  async deleteAllCards(): Promise<{ deletedCount: number }> {
+    const result = await this.cardModel.deleteMany({});
+    return { deletedCount: result.deletedCount };
+  }
+
+  /**
+   * Actualiza una tarjeta existente con los nuevos datos.
+   */
   async updateCard(id: string, updateCardDto: UpdateCardDto): Promise<Card> {
     const card = await this.cardModel.findByIdAndUpdate(id, updateCardDto, { new: true }).exec();
     if (!card) {
-      throw new NotFoundException(`Card with ID ${id} not found`);
+      throw new NotFoundException(`No se encontró la tarjeta con ID ${id}`);
     }
     return card;
   }
 
+  /**
+   * Elimina una tarjeta específica.
+   */
   async deleteCard(id: string): Promise<void> {
     const result = await this.cardModel.findByIdAndDelete(id).exec();
     if (!result) {
-      throw new NotFoundException(`Card with ID ${id} not found`);
+      throw new NotFoundException(`No se encontró la tarjeta con ID ${id}`);
     }
   }
 
+  /**
+   * Mueve una tarjeta de una posición a otra, ya sea dentro de la misma columna
+   * o entre columnas diferentes. Maneja automáticamente el reordenamiento de posiciones.
+   */
   async moveCard(moveCardDto: MoveCardDto): Promise<Card> {
     const { cardId, sourceColumnId, destinationColumnId, sourcePosition, destinationPosition } =
       moveCardDto;
 
+    // Verificamos que la tarjeta existe
     const card = await this.cardModel.findById(cardId).exec();
     if (!card) {
-      throw new NotFoundException(`Card with ID ${cardId} not found`);
+      throw new NotFoundException(`No se encontró la tarjeta con ID ${cardId}`);
     }
 
+    // Si es la misma columna, solo reordenamos las posiciones
     if (sourceColumnId === destinationColumnId) {
       await this.reorderCardsInSameColumn(sourceColumnId, sourcePosition, destinationPosition);
     } else {
+      // Si es entre columnas, movemos y reordenamos ambas columnas
       await this.moveCardBetweenColumns(
         cardId,
         sourceColumnId,
@@ -168,30 +217,50 @@ export class BoardService {
       );
     }
 
-    card.columnId = new Types.ObjectId(destinationColumnId);
-    card.position = destinationPosition;
-    return card.save();
+    // Actualizamos la tarjeta con la nueva columna y posición
+    const updatedCard = await this.cardModel
+      .findByIdAndUpdate(
+        cardId,
+        {
+          columnId: new Types.ObjectId(destinationColumnId),
+          position: destinationPosition,
+        },
+        { new: true },
+      )
+      .exec();
+
+    if (!updatedCard) {
+      throw new NotFoundException(`No se encontró la tarjeta con ID ${cardId}`);
+    }
+    return updatedCard;
   }
+
+  /**
+   * Reordena las tarjetas dentro de la misma columna cuando se mueve una tarjeta.
+   * Ajusta las posiciones de las tarjetas afectadas para hacer espacio.
+   */
   private async reorderCardsInSameColumn(
     columnId: string,
     sourcePosition: number,
     destinationPosition: number,
   ): Promise<void> {
     if (sourcePosition < destinationPosition) {
+      // Moviendo hacia abajo: las tarjetas entre source y destination se mueven hacia arriba
       await this.cardModel
         .updateMany(
           {
-            columnId,
+            columnId: new Types.ObjectId(columnId),
             position: { $gt: sourcePosition, $lte: destinationPosition },
           },
           { $inc: { position: -1 } },
         )
         .exec();
     } else {
+      // Moviendo hacia arriba: las tarjetas entre destination y source se mueven hacia abajo
       await this.cardModel
         .updateMany(
           {
-            columnId,
+            columnId: new Types.ObjectId(columnId),
             position: { $gte: destinationPosition, $lt: sourcePosition },
           },
           { $inc: { position: 1 } },
@@ -200,6 +269,10 @@ export class BoardService {
     }
   }
 
+  /**
+   * Maneja el movimiento de tarjetas entre columnas diferentes.
+   * Ajusta las posiciones en ambas columnas para hacer espacio.
+   */
   private async moveCardBetweenColumns(
     cardId: string,
     sourceColumnId: string,
@@ -207,20 +280,22 @@ export class BoardService {
     sourcePosition: number,
     destinationPosition: number,
   ): Promise<void> {
+    // En la columna origen: movemos hacia arriba las tarjetas que estaban después
     await this.cardModel
       .updateMany(
         {
-          columnId: sourceColumnId,
+          columnId: new Types.ObjectId(sourceColumnId),
           position: { $gt: sourcePosition },
         },
         { $inc: { position: -1 } },
       )
       .exec();
 
+    // En la columna destino: movemos hacia abajo las tarjetas que están en la posición destino o después
     await this.cardModel
       .updateMany(
         {
-          columnId: destinationColumnId,
+          columnId: new Types.ObjectId(destinationColumnId),
           position: { $gte: destinationPosition },
         },
         { $inc: { position: 1 } },
@@ -228,24 +303,51 @@ export class BoardService {
       .exec();
   }
 
+  /**
+   * Obtiene un tablero completo con todas sus columnas y tarjetas.
+   * Este es el método principal que usa el frontend para cargar todo el estado del tablero.
+   */
   async getBoardWithData(boardId: string) {
     const board = await this.getBoardById(boardId);
-    const columns = await this.getColumnsByBoardId(boardId);
+    const columnas = await this.getColumnsByBoardId(boardId);
 
-    const columnsWithCards = await Promise.all(
-      columns.map(async (column) => {
-        const columnId = (column._id as Types.ObjectId).toString();
-        const cards = await this.getCardsByColumnId(columnId);
+    // Para cada columna, obtenemos sus tarjetas
+    const columnasConTarjetas = await Promise.all(
+      columnas.map(async (columna) => {
+        const columnId = (columna._id as Types.ObjectId).toString();
+        const tarjetas = await this.getCardsByColumnId(columnId);
         return {
-          ...column.toObject(),
-          cards,
+          ...columna.toObject(),
+          cards: tarjetas,
         };
       }),
     );
 
     return {
       ...board.toObject(),
-      columns: columnsWithCards,
+      columns: columnasConTarjetas,
     };
+  }
+
+  /**
+   * Obtiene una columna específica por su ID.
+   */
+  async getColumn(columnId: string): Promise<Column> {
+    const column = await this.columnModel.findById(columnId).exec();
+    if (!column) {
+      throw new NotFoundException(`No se encontró la columna con ID ${columnId}`);
+    }
+    return column;
+  }
+
+  /**
+   * Obtiene una tarjeta específica por su ID.
+   */
+  async getCard(cardId: string): Promise<Card> {
+    const card = await this.cardModel.findById(cardId).exec();
+    if (!card) {
+      throw new NotFoundException(`No se encontró la tarjeta con ID ${cardId}`);
+    }
+    return card;
   }
 }
