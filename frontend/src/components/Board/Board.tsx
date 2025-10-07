@@ -175,7 +175,7 @@ const Board = ({ boardId }: BoardProps) => {
   if (loading || !currentBoard) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 dark:border-blue-400"></div>
       </div>
     );
   }
@@ -186,7 +186,7 @@ const Board = ({ boardId }: BoardProps) => {
       <div className="mb-6 flex items-center justify-between">
         <button
           onClick={() => setShowCreateColumnModal(true)}
-          className="flex items-center gap-2 bg-white hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-lg border border-slate-300 transition-colors shadow-sm"
+          className="flex items-center gap-2 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 transition-colors shadow-sm"
         >
           <Plus size={18} />
           Agregar Columna
@@ -195,7 +195,7 @@ const Board = ({ boardId }: BoardProps) => {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowExportModal(true)}
-            className="flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition-colors shadow-sm"
+            className="flex items-center gap-2 bg-green-500 hover:bg-green-600 dark:bg-green-600 dark:hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors shadow-sm"
           >
             <Download size={18} />
             Exportar Backlog
@@ -206,7 +206,7 @@ const Board = ({ boardId }: BoardProps) => {
                 await deleteBoard(currentBoard._id);
               }
             }}
-            className="flex items-center gap-2 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg transition-colors shadow-sm"
+            className="flex items-center gap-2 bg-red-500 hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors shadow-sm"
           >
             <Trash2 size={18} />
             Eliminar Tablero
@@ -227,17 +227,17 @@ const Board = ({ boardId }: BoardProps) => {
           ))}
 
           {currentBoard.columns.length === 0 && (
-            <div className="flex-1 flex items-center justify-center py-16 bg-white rounded-xl border-2 border-dashed border-slate-300">
+            <div className="flex-1 flex items-center justify-center py-16 bg-white dark:bg-slate-800 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-600">
               <div className="text-center">
-                <h3 className="text-lg font-semibold text-slate-700 mb-2">
+                <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-200 mb-2">
                   No hay columnas creadas
                 </h3>
-                <p className="text-slate-500 mb-4">
+                <p className="text-slate-500 dark:text-slate-400 mb-4">
                   Agrega una nueva columna para comenzar
                 </p>
                 <button
                   onClick={() => setShowCreateColumnModal(true)}
-                  className="inline-flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors"
+                  className="inline-flex items-center gap-2 bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
                 >
                   <Plus size={18} />
                   Agregar Columna
