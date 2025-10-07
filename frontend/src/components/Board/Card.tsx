@@ -51,13 +51,13 @@ const Card = ({ card, isDragging = false }: CardProps) => {
         style={style}
         {...attributes}
         {...listeners}
-        className={`bg-white rounded-lg p-4 shadow-sm hover:shadow-md transition-all cursor-move border border-slate-200 group ${
-          isDragging ? "shadow-xl" : ""
+        className={`bg-white dark:bg-slate-800 rounded-lg p-4 shadow-sm hover:shadow-md dark:shadow-slate-900/20 dark:hover:shadow-slate-900/30 transition-all cursor-move border border-slate-200 dark:border-slate-600 group ${
+          isDragging ? "shadow-xl dark:shadow-slate-900/40" : ""
         }`}
       >
         {/* Card Header */}
         <div className="flex items-start justify-between mb-2">
-          <h4 className="font-semibold text-slate-900 flex-1 pr-2">
+          <h4 className="font-semibold text-slate-900 dark:text-white flex-1 pr-2">
             {card.title}
           </h4>
 
@@ -66,7 +66,7 @@ const Card = ({ card, isDragging = false }: CardProps) => {
             <button
               onClick={handleEdit}
               disabled={isSortableDragging}
-              className="p-1 text-slate-400 hover:text-blue-500 transition-colors"
+              className="p-1 text-slate-400 dark:text-slate-500 hover:text-blue-500 dark:hover:text-blue-400 transition-colors"
               title="Edit card"
             >
               <Edit2 size={14} />
@@ -74,7 +74,7 @@ const Card = ({ card, isDragging = false }: CardProps) => {
             <button
               onClick={handleDelete}
               disabled={isSortableDragging}
-              className="p-1 text-slate-400 hover:text-red-500 transition-colors"
+              className="p-1 text-slate-400 dark:text-slate-500 hover:text-red-500 dark:hover:text-red-400 transition-colors"
               title="Delete card"
             >
               <Trash2 size={14} />
@@ -84,13 +84,13 @@ const Card = ({ card, isDragging = false }: CardProps) => {
 
         {/* Card Description */}
         {card.description && (
-          <p className="text-sm text-slate-600 line-clamp-3">
+          <p className="text-sm text-slate-600 dark:text-slate-300 line-clamp-3">
             {card.description}
           </p>
         )}
 
         {/* Card Footer */}
-        <div className="mt-3 text-xs text-slate-400">
+        <div className="mt-3 text-xs text-slate-400 dark:text-slate-500">
           {new Date(card.createdAt).toLocaleDateString()}
         </div>
       </div>

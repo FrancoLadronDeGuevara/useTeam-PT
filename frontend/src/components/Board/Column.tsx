@@ -25,12 +25,12 @@ const Column = ({ column }: ColumnProps) => {
 
   return (
     <div className="flex-shrink-0 w-80">
-      <div className="bg-slate-100 rounded-xl p-4 h-full">
+      <div className="bg-slate-100 dark:bg-slate-700 rounded-xl p-4 h-full">
         {/* Column Header */}
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-bold text-slate-900 text-lg flex items-center gap-2">
+          <h3 className="font-bold text-slate-900 dark:text-white text-lg flex items-center gap-2">
             {column.title}
-            <span className="bg-slate-200 text-slate-600 text-xs font-semibold px-2 py-1 rounded-full">
+            <span className="bg-slate-200 dark:bg-slate-600 text-slate-600 dark:text-slate-300 text-xs font-semibold px-2 py-1 rounded-full">
               {column.cards.length}
             </span>
           </h3>
@@ -44,7 +44,7 @@ const Column = ({ column }: ColumnProps) => {
                 await deleteColumn(column._id);
               }
             }}
-            className="p-1 text-slate-400 hover:text-red-500 transition-colors"
+            className="p-1 text-slate-400 dark:text-slate-500 hover:text-red-500 dark:hover:text-red-400 transition-colors"
             title="Delete column"
           >
             <Trash2 size={16} />
@@ -64,7 +64,7 @@ const Column = ({ column }: ColumnProps) => {
 
           {/* Empty State */}
           {column.cards.length === 0 && (
-            <div className="text-center py-8 text-slate-400">
+            <div className="text-center py-8 text-slate-400 dark:text-slate-500">
               <p className="text-sm">No hay tarjetas en esta columna</p>
             </div>
           )}
@@ -73,7 +73,7 @@ const Column = ({ column }: ColumnProps) => {
         {/* Add Card Button */}
         <button
           onClick={() => setShowCreateCardModal(true)}
-          className="w-full mt-3 flex items-center justify-center gap-2 text-slate-600 hover:text-slate-900 hover:bg-slate-200 py-2 rounded-lg transition-colors"
+          className="w-full mt-3 flex items-center justify-center gap-2 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-600 py-2 rounded-lg transition-colors"
         >
           <Plus size={18} />
           Agregar Tarjeta
