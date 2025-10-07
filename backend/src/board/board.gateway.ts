@@ -17,7 +17,14 @@ import {
   CreateColumnDto,
   UpdateColumnDto,
 } from './dto/board.dto';
+import { Card } from './schemas/card.schema';
 
+/**
+ * Gateway de WebSocket para sincronización en tiempo real de tableros.
+ *
+ * Maneja la conexión de usuarios, notificaciones de cambios y
+ * sincronización entre múltiples clientes conectados al mismo tablero.
+ */
 @WebSocketGateway({
   cors: {
     origin: process.env.FRONTEND_URL || 'http://localhost:5173',
@@ -33,9 +40,13 @@ export class BoardGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   constructor(private readonly boardService: BoardService) {}
 
+  /**
+   * Maneja la conexión de un nuevo cliente.
+   * Registra al usuario y notifica a todos los clientes conectados.
+   */
   handleConnection(client: Socket) {
-    this.logger.log(`Client connected: ${client.id}`);
-    this.connectedUsers.set(client.id, `User-${client.id.substring(0, 6)}`);
+    this.logger.log(`Cliente conectado: ${client.id}`);
+    this.connectedUsers.set(client.id, `Usuario-${client.id.substring(0, 6)}`);
 
     this.server.emit('user-connected', {
       userId: client.id,
@@ -43,8 +54,12 @@ export class BoardGateway implements OnGatewayConnection, OnGatewayDisconnect {
     });
   }
 
+  /**
+   * Maneja la desconexión de un cliente.
+   * Remueve al usuario y notifica a los clientes restantes.
+   */
   handleDisconnect(client: Socket) {
-    this.logger.log(`Client disconnected: ${client.id}`);
+    this.logger.log(`Cliente desconectado: ${client.id}`);
     this.connectedUsers.delete(client.id);
 
     this.server.emit('user-disconnected', {
@@ -53,21 +68,31 @@ export class BoardGateway implements OnGatewayConnection, OnGatewayDisconnect {
     });
   }
 
+  /**
+   * Maneja la notificación de creación de tarjeta.
+   * La tarjeta ya fue creada via API, solo notificamos a otros clientes.
+   */
   @SubscribeMessage('card:create')
-  async handleCreateCard(@MessageBody() data: CreateCardDto, @ConnectedSocket() client: Socket) {
+  async handleCreateCard(@MessageBody() card: CreateCardDto, @ConnectedSocket() client: Socket) {
     try {
-      const card = await this.boardService.createCard(data);
+      // Obtenemos la columna para saber a qué tablero pertenece
+      const column = await this.boardService.getColumn(card.columnId.toString());
 
-      client.broadcast.emit('card:created', card);
+      // Notificamos a otros clientes del mismo tablero
+      client.to(`board:${column.boardId}`).emit('card:created', card);
 
-      this.logger.log(`Card created: ${card._id}`);
+      this.logger.log(`Notificación de tarjeta creada enviada al tablero: ${column.boardId}`);
       return { success: true, data: card };
     } catch (error) {
-      this.logger.error('Error creating card:', error);
+      this.logger.error('Error notificando creación de tarjeta:', error);
       return { success: false, error: error.message };
     }
   }
 
+  /**
+   * Maneja la actualización de una tarjeta.
+   * Actualiza en la base de datos y notifica a otros clientes.
+   */
   @SubscribeMessage('card:update')
   async handleUpdateCard(
     @MessageBody() data: { id: string; updates: UpdateCardDto },
@@ -75,50 +100,82 @@ export class BoardGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ) {
     try {
       const card = await this.boardService.updateCard(data.id, data.updates);
+      const column = await this.boardService.getColumn(card.columnId.toString());
 
-      client.broadcast.emit('card:updated', card);
+      // Notificamos a otros clientes del mismo tablero
+      client.to(`board:${column.boardId}`).emit('card:updated', card);
 
-      this.logger.log(`Card updated: ${card._id}`);
+      this.logger.log(`Tarjeta actualizada: ${card._id}`);
       return { success: true, data: card };
     } catch (error) {
-      this.logger.error('Error updating card:', error);
+      this.logger.error('Error actualizando tarjeta:', error);
       return { success: false, error: error.message };
     }
   }
 
+  /**
+   * Maneja la eliminación de una tarjeta.
+   * Elimina de la base de datos y notifica a otros clientes.
+   */
   @SubscribeMessage('card:delete')
   async handleDeleteCard(@MessageBody() data: { id: string }, @ConnectedSocket() client: Socket) {
     try {
+      // Obtenemos la tarjeta y su columna antes de eliminar para saber el boardId
+      const card = await this.boardService.getCard(data.id);
+      const column = await this.boardService.getColumn(card.columnId.toString());
+
       await this.boardService.deleteCard(data.id);
 
-      client.broadcast.emit('card:deleted', { id: data.id });
+      // Notificamos a otros clientes del mismo tablero
+      client.to(`board:${column.boardId}`).emit('card:deleted', { id: data.id });
 
-      this.logger.log(`Card deleted: ${data.id}`);
+      this.logger.log(`Tarjeta eliminada: ${data.id}`);
       return { success: true };
     } catch (error) {
-      this.logger.error('Error deleting card:', error);
+      this.logger.error('Error eliminando tarjeta:', error);
       return { success: false, error: error.message };
     }
   }
 
+  /**
+   * Maneja el movimiento de una tarjeta entre columnas o posiciones.
+   * Actualiza en la base de datos y notifica a otros clientes.
+   */
   @SubscribeMessage('card:move')
   async handleMoveCard(@MessageBody() data: MoveCardDto, @ConnectedSocket() client: Socket) {
     try {
-      const card = await this.boardService.moveCard(data);
+      this.logger.log(
+        `Moviendo tarjeta ${data.cardId} de columna ${data.sourceColumnId} a ${data.destinationColumnId}`,
+      );
 
-      client.broadcast.emit('card:moved', {
+      // Movemos la tarjeta en la base de datos
+      const card = await this.boardService.moveCard(data);
+      this.logger.log(`Tarjeta movida exitosamente en BD: ${card._id}`);
+
+      // Obtenemos la columna destino para saber el boardId
+      const destColumn = await this.boardService.getColumn(data.destinationColumnId);
+
+      // Notificamos a otros clientes del mismo tablero
+      client.to(`board:${destColumn.boardId}`).emit('card:moved', {
         card,
         moveData: data,
       });
 
-      this.logger.log(`Card moved: ${card._id}`);
+      this.logger.log(
+        `Tarjeta movida: ${card._id} y notificación enviada al tablero:${destColumn.boardId}`,
+      );
       return { success: true, data: card };
     } catch (error) {
+      this.logger.error('Error moviendo tarjeta:', error);
       this.logger.error('Error moving card:', error);
       return { success: false, error: error.message };
     }
   }
 
+  /**
+   * Maneja la creación de una nueva columna.
+   * Crea en la base de datos y notifica a otros clientes del mismo tablero.
+   */
   @SubscribeMessage('column:create')
   async handleCreateColumn(
     @MessageBody() data: CreateColumnDto,
@@ -127,16 +184,21 @@ export class BoardGateway implements OnGatewayConnection, OnGatewayDisconnect {
     try {
       const column = await this.boardService.createColumn(data);
 
-      client.broadcast.emit('column:created', column);
+      // Notificamos a otros clientes del mismo tablero
+      client.to(`board:${data.boardId}`).emit('column:created', column);
 
-      this.logger.log(`Column created: ${column._id}`);
+      this.logger.log(`Columna creada: ${column._id}`);
       return { success: true, data: column };
     } catch (error) {
-      this.logger.error('Error creating column:', error);
+      this.logger.error('Error creando columna:', error);
       return { success: false, error: error.message };
     }
   }
 
+  /**
+   * Maneja la actualización de una columna.
+   * Actualiza en la base de datos y notifica a todos los clientes.
+   */
   @SubscribeMessage('column:update')
   async handleUpdateColumn(
     @MessageBody() data: { id: string; updates: UpdateColumnDto },
@@ -145,24 +207,33 @@ export class BoardGateway implements OnGatewayConnection, OnGatewayDisconnect {
     try {
       const column = await this.boardService.updateColumn(data.id, data.updates);
 
+      // Notificamos a todos los clientes conectados
       client.broadcast.emit('column:updated', column);
 
-      this.logger.log(`Column updated: ${column._id}`);
+      this.logger.log(`Columna actualizada: ${column._id}`);
       return { success: true, data: column };
     } catch (error) {
-      this.logger.error('Error updating column:', error);
+      this.logger.error('Error actualizando columna:', error);
       return { success: false, error: error.message };
     }
   }
 
+  /**
+   * Maneja la eliminación de una columna.
+   * Elimina de la base de datos (con eliminación en cascada de tarjetas) y notifica a otros clientes.
+   */
   @SubscribeMessage('column:delete')
   async handleDeleteColumn(@MessageBody() data: { id: string }, @ConnectedSocket() client: Socket) {
     try {
+      // Obtenemos la columna antes de eliminar para saber el boardId
+      const column = await this.boardService.getColumn(data.id);
+
       await this.boardService.deleteColumn(data.id);
 
-      client.broadcast.emit('column:deleted', { id: data.id });
+      // Notificamos a otros clientes del mismo tablero
+      client.to(`board:${column.boardId}`).emit('column:deleted', { id: data.id });
 
-      this.logger.log(`Column deleted: ${data.id}`);
+      this.logger.log(`Columna eliminada: ${data.id}`);
       return { success: true };
     } catch (error) {
       this.logger.error('Error deleting column:', error);
@@ -170,19 +241,27 @@ export class BoardGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
   }
 
+  /**
+   * Maneja la unión de un cliente a un tablero específico.
+   * Permite recibir notificaciones de cambios en ese tablero.
+   */
   @SubscribeMessage('board:join')
   handleJoinBoard(@MessageBody() data: { boardId: string }, @ConnectedSocket() client: Socket) {
     client.join(`board:${data.boardId}`);
-    this.logger.log(`Client ${client.id} joined board ${data.boardId}`);
+    this.logger.log(`Cliente ${client.id} se unió al tablero ${data.boardId}`);
 
-    return { success: true, message: `Joined board ${data.boardId}` };
+    return { success: true, message: `Unido al tablero ${data.boardId}` };
   }
 
+  /**
+   * Maneja la salida de un cliente de un tablero específico.
+   * Deja de recibir notificaciones de cambios en ese tablero.
+   */
   @SubscribeMessage('board:leave')
   handleLeaveBoard(@MessageBody() data: { boardId: string }, @ConnectedSocket() client: Socket) {
     client.leave(`board:${data.boardId}`);
-    this.logger.log(`Client ${client.id} left board ${data.boardId}`);
+    this.logger.log(`Cliente ${client.id} salió del tablero ${data.boardId}`);
 
-    return { success: true, message: `Left board ${data.boardId}` };
+    return { success: true, message: `Salió del tablero ${data.boardId}` };
   }
 }
