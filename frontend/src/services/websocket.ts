@@ -23,6 +23,7 @@ const WS_URL = import.meta.env.VITE_WS_URL || "ws://localhost:3000";
 class WebSocketService {
   private socket: Socket | null = null;
   private listeners: Map<string, Array<(payload: unknown) => void>> = new Map();
+  private isConnecting: boolean = false;
 
   /**
    * Establece la conexión con el servidor WebSocket.
@@ -32,10 +33,24 @@ class WebSocketService {
    */
   connect(): Socket {
     if (this.socket?.connected) {
-      console.log("WebSocket ya está conectado");
+      console.log("WebSocket ya está conectado:", this.socket.id);
       return this.socket;
     }
 
+    if (this.isConnecting) {
+      console.log("WebSocket ya se está conectando, reutilizando...");
+      return this.socket!;
+    }
+
+    if (this.socket) {
+      console.log("WebSocket existe pero no está conectado, reconectando...");
+      this.isConnecting = true;
+      this.socket.connect();
+      return this.socket;
+    }
+
+    console.log("Creando nueva conexión WebSocket");
+    this.isConnecting = true;
     this.socket = io(WS_URL, {
       transports: ["websocket"],
       reconnection: true,
@@ -50,14 +65,21 @@ class WebSocketService {
 
     this.socket.on("connect", () => {
       console.log("WebSocket conectado:", this.socket?.id);
+      this.isConnecting = false;
     });
 
-    this.socket.on("disconnect", () => {
-      console.log("WebSocket desconectado");
+    this.socket.on("disconnect", (reason) => {
+      console.log("WebSocket desconectado:", reason);
+      this.isConnecting = false;
     });
 
     this.socket.on("connect_error", (error) => {
       console.error("Error de conexión WebSocket:", error);
+      this.isConnecting = false;
+    });
+
+    this.socket.on("board:updated", (data) => {
+      console.log("WebSocket: Evento board:updated recibido", data);
     });
 
     return this.socket;
@@ -68,9 +90,11 @@ class WebSocketService {
    */
   disconnect(): void {
     if (this.socket) {
+      console.log("Desconectando WebSocket:", this.socket.id);
       this.socket.disconnect();
       this.socket = null;
       this.listeners.clear();
+      this.isConnecting = false;
     }
   }
 
@@ -79,13 +103,18 @@ class WebSocketService {
    */
   joinBoard(boardId: string): void {
     console.log("WebSocket: Uniéndose al tablero", boardId);
-    this.socket?.emit(WS_CLIENT_EVENTS.BOARD_JOIN, { boardId });
+    if (this.socket?.connected) {
+      this.socket.emit(WS_CLIENT_EVENTS.BOARD_JOIN, { boardId });
+    } else {
+      console.error("WebSocket no está conectado, no se puede unir al tablero");
+    }
   }
 
   /**
    * Sale de un tablero específico, dejando de recibir notificaciones.
    */
   leaveBoard(boardId: string): void {
+    console.log("WebSocket: Saliendo del tablero", boardId);
     this.socket?.emit(WS_CLIENT_EVENTS.BOARD_LEAVE, { boardId });
   }
 
@@ -129,6 +158,7 @@ class WebSocketService {
    * Notifica la actualización de una columna a otros usuarios.
    */
   updateColumn(id: string, updates: Partial<CreateColumnDto>): void {
+    console.log("WebSocket: Emitiendo actualización de columna", id, updates);
     this.socket?.emit(WS_CLIENT_EVENTS.COLUMN_UPDATE, { id, updates });
   }
 
@@ -137,6 +167,17 @@ class WebSocketService {
    */
   deleteColumn(id: string): void {
     this.socket?.emit(WS_CLIENT_EVENTS.COLUMN_DELETE, { id });
+  }
+
+  /**
+   * Notifica la actualización de un tablero a otros usuarios.
+   */
+  updateBoard(
+    id: string,
+    updates: { title: string; description?: string }
+  ): void {
+    console.log("WebSocket: Emitiendo actualización de tablero", id, updates);
+    this.socket?.emit(WS_CLIENT_EVENTS.BOARD_UPDATE, { id, updates });
   }
 
   /**
@@ -194,7 +235,16 @@ class WebSocketService {
   }
 }
 
-const websocketService = new WebSocketService();
+// Singleton pattern para asegurar una sola instancia por pestaña
+let websocketServiceInstance: WebSocketService | null = null;
 
-export default websocketService;
+const getWebSocketService = (): WebSocketService => {
+  if (!websocketServiceInstance) {
+    console.log("Creando nueva instancia de WebSocketService");
+    websocketServiceInstance = new WebSocketService();
+  }
+  return websocketServiceInstance;
+};
+
+export default getWebSocketService();
 export { WS_SERVER_EVENTS };

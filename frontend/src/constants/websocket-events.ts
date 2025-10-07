@@ -3,6 +3,7 @@ export const WS_CLIENT_EVENTS = {
   // Board
   BOARD_JOIN: "board:join",
   BOARD_LEAVE: "board:leave",
+  BOARD_UPDATE: "board:update",
 
   // Cards
   CARD_CREATE: "card:create",
@@ -21,6 +22,9 @@ export const WS_SERVER_EVENTS = {
   // Users
   USER_CONNECTED: "user-connected",
   USER_DISCONNECTED: "user-disconnected",
+
+  // Board
+  BOARD_UPDATED: "board:updated",
 
   // Cards
   CARD_CREATED: "card:created",

@@ -2,18 +2,33 @@ import { useEffect, useState } from "react";
 import { Plus, LayoutGrid } from "lucide-react";
 import { useBoardContext } from "../../context/BoardContext";
 import CreateBoardModal from "./CreateBoardModal";
+import EditBoardModal from "./EditBoardModal";
+import KebabMenu from "../UI/KebabMenu";
 
 interface BoardListProps {
   onSelectBoard: (boardId: string) => void;
 }
 
 const BoardList = ({ onSelectBoard }: BoardListProps) => {
-  const { boards, loading, fetchBoards } = useBoardContext();
+  const { boards, loading, fetchBoards, deleteBoard } = useBoardContext();
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [selectedBoard, setSelectedBoard] = useState<any>(null);
 
   useEffect(() => {
     fetchBoards();
   }, [fetchBoards]);
+
+  const handleDeleteBoard = async (boardId: string) => {
+    if (window.confirm("¿Deseas eliminar este tablero?")) {
+      await deleteBoard(boardId);
+    }
+  };
+
+  const handleEditBoard = (board: any) => {
+    setSelectedBoard(board);
+    setShowEditModal(true);
+  };
 
   if (loading && boards.length === 0) {
     return (
@@ -75,13 +90,21 @@ const BoardList = ({ onSelectBoard }: BoardListProps) => {
           {boards.map((board) => (
             <div
               key={board._id}
-              onClick={() => onSelectBoard(board._id)}
-              className="bg-white dark:bg-slate-800 rounded-xl shadow-sm hover:shadow-md dark:shadow-slate-900/20 dark:hover:shadow-slate-900/30 transition-all cursor-pointer border border-slate-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-600 p-6 group"
+              className="bg-white dark:bg-slate-800 rounded-xl shadow-sm hover:shadow-md dark:shadow-slate-900/20 dark:hover:shadow-slate-900/30 transition-all border border-slate-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-600 p-6 group relative"
             >
               <div className="flex items-start justify-between mb-3">
-                <h3 className="text-xl font-bold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                <h3
+                  onClick={() => onSelectBoard(board._id)}
+                  className="text-xl font-bold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors cursor-pointer flex-1 pr-2"
+                >
                   {board.title}
                 </h3>
+                <KebabMenu
+                  onEdit={() => handleEditBoard(board)}
+                  onDelete={() => handleDeleteBoard(board._id)}
+                  editLabel="Editar tablero"
+                  deleteLabel="Eliminar tablero"
+                />
               </div>
 
               {board.description && (
@@ -101,6 +124,17 @@ const BoardList = ({ onSelectBoard }: BoardListProps) => {
       {/* Create Board Modal */}
       {showCreateModal && (
         <CreateBoardModal onClose={() => setShowCreateModal(false)} />
+      )}
+
+      {/* Edit Board Modal */}
+      {showEditModal && selectedBoard && (
+        <EditBoardModal
+          board={selectedBoard}
+          onClose={() => {
+            setShowEditModal(false);
+            setSelectedBoard(null);
+          }}
+        />
       )}
     </div>
   );

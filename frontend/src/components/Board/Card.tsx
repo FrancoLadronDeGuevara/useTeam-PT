@@ -1,9 +1,9 @@
-import { useState, MouseEvent } from "react";
+import { useState } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Trash2, Edit2 } from "lucide-react";
 import { useBoardContext } from "../../context/BoardContext";
 import EditCardModal from "./EditCardModal";
+import KebabMenu from "../UI/KebabMenu";
 import type { ICard } from "../../types";
 
 interface CardProps {
@@ -30,16 +30,14 @@ const Card = ({ card, isDragging = false }: CardProps) => {
     opacity: isSortableDragging ? 0.5 : 1,
   };
 
-  const handleDelete = async (e: MouseEvent<HTMLButtonElement>) => {
-    e.stopPropagation();
+  const handleDelete = async () => {
     if (isSortableDragging) return;
-    if (window.confirm("Deseas eliminar esta tarjeta?")) {
+    if (window.confirm("¿Deseas eliminar esta tarjeta?")) {
       await deleteCard(card._id);
     }
   };
 
-  const handleEdit = (e: MouseEvent<HTMLButtonElement>) => {
-    e.stopPropagation();
+  const handleEdit = () => {
     if (isSortableDragging) return;
     setShowEditModal(true);
   };
@@ -61,24 +59,14 @@ const Card = ({ card, isDragging = false }: CardProps) => {
             {card.title}
           </h4>
 
-          {/* Action Buttons */}
-          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            <button
-              onClick={handleEdit}
-              disabled={isSortableDragging}
-              className="p-1 text-slate-400 dark:text-slate-500 hover:text-blue-500 dark:hover:text-blue-400 transition-colors"
-              title="Edit card"
-            >
-              <Edit2 size={14} />
-            </button>
-            <button
-              onClick={handleDelete}
-              disabled={isSortableDragging}
-              className="p-1 text-slate-400 dark:text-slate-500 hover:text-red-500 dark:hover:text-red-400 transition-colors"
-              title="Delete card"
-            >
-              <Trash2 size={14} />
-            </button>
+          {/* Kebab Menu */}
+          <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+            <KebabMenu
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+              editLabel="Editar tarjeta"
+              deleteLabel="Eliminar tarjeta"
+            />
           </div>
         </div>
 

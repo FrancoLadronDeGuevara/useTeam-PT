@@ -9,12 +9,15 @@ import {
   DragStartEvent,
   DragEndEvent,
 } from "@dnd-kit/core";
-import { Plus, Download, Trash2 } from "lucide-react";
+import { Plus, Download } from "lucide-react";
 import { useBoardContext } from "../../context/BoardContext";
+import websocketService from "../../services/websocket";
 import Column from "./Column";
 import Card from "./Card";
 import CreateColumnModal from "./CreateColumnModal";
 import ExportModal from "./ExportModal";
+import EditBoardModal from "../BoardList/EditBoardModal";
+import KebabMenu from "../UI/KebabMenu";
 import type { ICard, IColumnWithCards } from "../../types";
 
 interface BoardProps {
@@ -27,6 +30,7 @@ const Board = ({ boardId }: BoardProps) => {
   const [activeCard, setActiveCard] = useState<ICard | null>(null);
   const [showCreateColumnModal, setShowCreateColumnModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -39,6 +43,14 @@ const Board = ({ boardId }: BoardProps) => {
   useEffect(() => {
     if (boardId) {
       fetchBoardWithData(boardId);
+      // Conectar WebSocket solo una vez por pestaña
+      const socket = websocketService.connect();
+      console.log(
+        "Board: WebSocket conectado para tablero",
+        boardId,
+        "Socket ID:",
+        socket.id
+      );
     }
   }, [boardId, fetchBoardWithData]);
 
@@ -172,6 +184,16 @@ const Board = ({ boardId }: BoardProps) => {
     return currentBoard.columns.find((col) => col._id === columnId);
   };
 
+  const handleDeleteBoard = async () => {
+    if (currentBoard && window.confirm("¿Deseas eliminar este tablero?")) {
+      await deleteBoard(currentBoard._id);
+    }
+  };
+
+  const handleEditBoard = () => {
+    setShowEditModal(true);
+  };
+
   if (loading || !currentBoard) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -200,17 +222,13 @@ const Board = ({ boardId }: BoardProps) => {
             <Download size={18} />
             Exportar Backlog
           </button>
-          <button
-            onClick={async () => {
-              if (window.confirm("Deseas eliminar este tablero?")) {
-                await deleteBoard(currentBoard._id);
-              }
-            }}
-            className="flex items-center gap-2 bg-red-500 hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors shadow-sm"
-          >
-            <Trash2 size={18} />
-            Eliminar Tablero
-          </button>
+          <KebabMenu
+            onEdit={handleEditBoard}
+            onDelete={handleDeleteBoard}
+            editLabel="Editar tablero"
+            deleteLabel="Eliminar tablero"
+            className="ml-2"
+          />
         </div>
       </div>
 
@@ -269,6 +287,14 @@ const Board = ({ boardId }: BoardProps) => {
         <ExportModal
           boardId={boardId}
           onClose={() => setShowExportModal(false)}
+        />
+      )}
+
+      {/* Edit Board Modal */}
+      {showEditModal && currentBoard && (
+        <EditBoardModal
+          board={currentBoard}
+          onClose={() => setShowEditModal(false)}
         />
       )}
     </div>

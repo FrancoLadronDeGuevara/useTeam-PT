@@ -207,8 +207,8 @@ export class BoardGateway implements OnGatewayConnection, OnGatewayDisconnect {
     try {
       const column = await this.boardService.updateColumn(data.id, data.updates);
 
-      // Notificamos a todos los clientes conectados
-      client.broadcast.emit('column:updated', column);
+      // Notificamos a TODOS los clientes conectados (sala global)
+      this.server.emit('column:updated', column);
 
       this.logger.log(`Columna actualizada: ${column._id}`);
       return { success: true, data: column };
@@ -247,8 +247,14 @@ export class BoardGateway implements OnGatewayConnection, OnGatewayDisconnect {
    */
   @SubscribeMessage('board:join')
   handleJoinBoard(@MessageBody() data: { boardId: string }, @ConnectedSocket() client: Socket) {
+    this.logger.log(`Cliente ${client.id} intentando unirse al tablero ${data.boardId}`);
     client.join(`board:${data.boardId}`);
     this.logger.log(`Cliente ${client.id} se unió al tablero ${data.boardId}`);
+
+    // Verificar cuántos clientes están en la sala después de unirse
+    const room = this.server.sockets.adapter.rooms.get(`board:${data.boardId}`);
+    const roomSize = room ? room.size : 0;
+    console.log(`DEBUG: Clientes en sala board:${data.boardId} después de unirse: ${roomSize}`);
 
     return { success: true, message: `Unido al tablero ${data.boardId}` };
   }
@@ -263,5 +269,38 @@ export class BoardGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.logger.log(`Cliente ${client.id} salió del tablero ${data.boardId}`);
 
     return { success: true, message: `Salió del tablero ${data.boardId}` };
+  }
+
+  /**
+   * Maneja la actualización de un tablero.
+   * Notifica a todos los clientes conectados al tablero sobre los cambios.
+   */
+  @SubscribeMessage('board:update')
+  async handleUpdateBoard(
+    @MessageBody() data: { id: string; updates: { title: string; description?: string } },
+    @ConnectedSocket() client: Socket,
+  ) {
+    try {
+      this.logger.log(`Recibida actualización de tablero: ${data.id}`, data.updates);
+
+      // Verificar cuántos clientes están en la sala
+      const room = this.server.sockets.adapter.rooms.get(`board:${data.id}`);
+      const roomSize = room ? room.size : 0;
+      this.logger.log(`Clientes en sala board:${data.id}: ${roomSize}`);
+      console.log(`DEBUG: Clientes en sala board:${data.id}: ${roomSize}`);
+
+      // Notificamos a TODOS los clientes conectados (sala global)
+      this.server.emit('board:updated', {
+        id: data.id,
+        title: data.updates.title,
+        description: data.updates.description,
+      });
+
+      this.logger.log(`Notificación enviada a TODOS los clientes conectados (sala global)`);
+      return { success: true, message: 'Tablero actualizado' };
+    } catch (error) {
+      this.logger.error('Error notificando actualización de tablero:', error);
+      return { success: false, error: error.message };
+    }
   }
 }
