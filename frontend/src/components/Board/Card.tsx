@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useBoardContext } from "../../context/BoardContext";
+import { formatDate } from "../../utils/helpers";
 import EditCardModal from "./EditCardModal";
 import KebabMenu from "../UI/KebabMenu";
 import type { ICard } from "../../types";
@@ -79,7 +80,7 @@ const Card = ({ card, isDragging = false }: CardProps) => {
 
         {/* Card Footer */}
         <div className="mt-3 text-xs text-slate-400 dark:text-slate-500">
-          {new Date(card.createdAt).toLocaleDateString()}
+          {formatDate(card.createdAt)}
         </div>
       </div>
 

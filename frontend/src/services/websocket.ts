@@ -33,23 +33,19 @@ class WebSocketService {
    */
   connect(): Socket {
     if (this.socket?.connected) {
-      console.log("WebSocket ya está conectado:", this.socket.id);
       return this.socket;
     }
 
     if (this.isConnecting) {
-      console.log("WebSocket ya se está conectando, reutilizando...");
       return this.socket!;
     }
 
     if (this.socket) {
-      console.log("WebSocket existe pero no está conectado, reconectando...");
       this.isConnecting = true;
       this.socket.connect();
       return this.socket;
     }
 
-    console.log("Creando nueva conexión WebSocket");
     this.isConnecting = true;
     this.socket = io(WS_URL, {
       transports: ["websocket"],
@@ -64,22 +60,15 @@ class WebSocketService {
     }
 
     this.socket.on("connect", () => {
-      console.log("WebSocket conectado:", this.socket?.id);
       this.isConnecting = false;
     });
 
-    this.socket.on("disconnect", (reason) => {
-      console.log("WebSocket desconectado:", reason);
+    this.socket.on("disconnect", () => {
       this.isConnecting = false;
     });
 
-    this.socket.on("connect_error", (error) => {
-      console.error("Error de conexión WebSocket:", error);
+    this.socket.on("connect_error", () => {
       this.isConnecting = false;
-    });
-
-    this.socket.on("board:updated", (data) => {
-      console.log("WebSocket: Evento board:updated recibido", data);
     });
 
     return this.socket;
@@ -90,7 +79,6 @@ class WebSocketService {
    */
   disconnect(): void {
     if (this.socket) {
-      console.log("Desconectando WebSocket:", this.socket.id);
       this.socket.disconnect();
       this.socket = null;
       this.listeners.clear();
@@ -102,11 +90,8 @@ class WebSocketService {
    * Se une a un tablero específico para recibir notificaciones de cambios.
    */
   joinBoard(boardId: string): void {
-    console.log("WebSocket: Uniéndose al tablero", boardId);
     if (this.socket?.connected) {
       this.socket.emit(WS_CLIENT_EVENTS.BOARD_JOIN, { boardId });
-    } else {
-      console.error("WebSocket no está conectado, no se puede unir al tablero");
     }
   }
 
@@ -114,7 +99,6 @@ class WebSocketService {
    * Sale de un tablero específico, dejando de recibir notificaciones.
    */
   leaveBoard(boardId: string): void {
-    console.log("WebSocket: Saliendo del tablero", boardId);
     this.socket?.emit(WS_CLIENT_EVENTS.BOARD_LEAVE, { boardId });
   }
 
@@ -143,7 +127,6 @@ class WebSocketService {
    * Notifica el movimiento de una tarjeta a otros usuarios.
    */
   moveCard(data: MoveCardDto & { boardId?: string }): void {
-    console.log("WebSocket: Emitiendo evento card:move", data);
     this.socket?.emit(WS_CLIENT_EVENTS.CARD_MOVE, data);
   }
 
@@ -158,7 +141,6 @@ class WebSocketService {
    * Notifica la actualización de una columna a otros usuarios.
    */
   updateColumn(id: string, updates: Partial<CreateColumnDto>): void {
-    console.log("WebSocket: Emitiendo actualización de columna", id, updates);
     this.socket?.emit(WS_CLIENT_EVENTS.COLUMN_UPDATE, { id, updates });
   }
 
@@ -176,7 +158,6 @@ class WebSocketService {
     id: string,
     updates: { title: string; description?: string }
   ): void {
-    console.log("WebSocket: Emitiendo actualización de tablero", id, updates);
     this.socket?.emit(WS_CLIENT_EVENTS.BOARD_UPDATE, { id, updates });
   }
 
@@ -184,7 +165,12 @@ class WebSocketService {
    * Registra un listener para un evento del servidor.
    *
    * Los listeners se guardan y se reattachen automáticamente
-   * cuando se reconecta el WebSocket.
+   * cuando se reconecta el WebSocket. Esto asegura que los
+   * event handlers persistan a través de reconexiones.
+   *
+   * @param event - Nombre del evento a escuchar
+   * @param callback - Función a ejecutar cuando se reciba el evento
+   * @template T - Tipo del payload del evento
    */
   on<T = unknown>(event: ServerEvent, callback: (payload: T) => void): void {
     // Aseguramos que el socket existe y se attachará
@@ -240,7 +226,6 @@ let websocketServiceInstance: WebSocketService | null = null;
 
 const getWebSocketService = (): WebSocketService => {
   if (!websocketServiceInstance) {
-    console.log("Creando nueva instancia de WebSocketService");
     websocketServiceInstance = new WebSocketService();
   }
   return websocketServiceInstance;

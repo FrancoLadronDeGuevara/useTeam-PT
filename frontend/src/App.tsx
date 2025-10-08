@@ -5,6 +5,7 @@ import { ThemeProvider } from "./context/ThemeContext";
 import BoardList from "./components/BoardList/BoardList";
 import Board from "./components/Board/Board";
 import Header from "./components/Header/Header";
+import NavigationBar from "./components/Header/NavigationBar";
 
 function App() {
   const [selectedBoardId, setSelectedBoardId] = useState<string | null>(null);
@@ -12,13 +13,15 @@ function App() {
   return (
     <ThemeProvider>
       <BoardProvider>
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 transition-colors duration-200">
-          <Header
+        <div className="min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-200">
+          <Header selectedBoardId={selectedBoardId} />
+
+          <NavigationBar
             selectedBoardId={selectedBoardId}
             onBackToBoards={() => setSelectedBoardId(null)}
           />
 
-          <main className="container mx-auto px-4 py-6">
+          <main className="container mx-auto px-6 py-6">
             {!selectedBoardId ? (
               <BoardList onSelectBoard={setSelectedBoardId} />
             ) : (

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Plus, LayoutGrid } from "lucide-react";
 import { useBoardContext } from "../../context/BoardContext";
+import { formatDate } from "../../utils/helpers";
 import CreateBoardModal from "./CreateBoardModal";
 import EditBoardModal from "./EditBoardModal";
 import KebabMenu from "../UI/KebabMenu";
@@ -114,7 +115,7 @@ const BoardList = ({ onSelectBoard }: BoardListProps) => {
               )}
 
               <div className="text-xs text-slate-500 dark:text-slate-400">
-                Creado {new Date(board.createdAt).toLocaleDateString()}
+                Creado {formatDate(board.createdAt)}
               </div>
             </div>
           ))}

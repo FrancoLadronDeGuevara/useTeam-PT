@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -24,7 +24,11 @@ const Column = ({ column }: ColumnProps) => {
     id: column._id,
   });
 
-  const cardIds = column.cards.map((card) => card._id);
+  // Memoizar los IDs de las tarjetas para evitar re-renders innecesarios
+  const cardIds = useMemo(
+    () => column.cards.map((card) => card._id),
+    [column.cards]
+  );
 
   const handleDeleteColumn = async () => {
     if (

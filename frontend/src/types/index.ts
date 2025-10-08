@@ -74,8 +74,3 @@ export interface UserConnectionData {
   userId: string;
   totalUsers: number;
 }
-
-export interface CardMovedData {
-  card: ICard;
-  moveData: MoveCardDto;
-}
