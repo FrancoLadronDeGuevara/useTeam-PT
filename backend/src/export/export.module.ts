@@ -7,5 +7,6 @@ import { BoardModule } from '../board/board.module';
   imports: [BoardModule],
   controllers: [ExportController],
   providers: [ExportService],
+  exports: [ExportService],
 })
 export class ExportModule {}

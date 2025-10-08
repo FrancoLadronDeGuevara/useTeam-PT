@@ -1,0 +1,229 @@
+{
+  "name": "Kanban Export",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "kanban-export",
+        "responseMode": "responseNode",
+        "responseNode": "Respuesta Webhook",
+        "options": {}
+      },
+      "id": "1",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "kanban-export-webhook"
+    },
+    {
+      "parameters": {
+        "url": "http://172.18.0.1:3000/api/export/columns",
+        "options": {}
+      },
+      "id": "2",
+      "name": "Obtener Columnas",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const outputCards = [];\n\n// Procesar todas las columnas y sus cards\nfor (const item of items) {\n    const column = item.json;\n    \n    console.log(`Processing column: ${column.name}`);\n    \n    if (column.cards && Array.isArray(column.cards)) {\n        console.log(`Column has ${column.cards.length} cards`);\n        \n        for (const card of column.cards) {\n            // Formatear fecha para CSV\n            let formattedDate = '';\n            if (card.createdAt) {\n                try {\n                    const date = new Date(card.createdAt);\n                    formattedDate = date.toLocaleDateString('es-ES', {\n                        year: 'numeric',\n                        month: '2-digit',\n                        day: '2-digit',\n                        hour: '2-digit',\n                        minute: '2-digit'\n                    });\n                } catch (error) {\n                    formattedDate = String(card.createdAt);\n                }\n            }\n            \n            outputCards.push({\n                json: {\n                    id: card._id,\n                    title: card.title || '',\n                    description: card.description || '',\n                    column: column.name,\n                    boardTitle: column.boardTitle,\n                    createdAt: formattedDate\n                }\n            });\n        }\n    } else {\n        console.warn(`Column ${column.name} has no cards or cards is not an array`);\n    }\n}\n\nconsole.log(`Total cards processed: ${outputCards.length}`);\nreturn outputCards;"
+      },
+      "id": "3",
+      "name": "Procesar Tarjetas",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "options": {
+          "delimiter": ",",
+          "fileName": "=kanban-export-{{ new Date().toISOString().split('T')[0] }}.csv",
+          "headerRow": true
+        }
+      },
+      "id": "4",
+      "name": "Convertir a CSV",
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "id": "5",
+      "name": "Merge CSV + Email",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "fromEmail": "francoguevara93@gmail.com",
+        "toEmail": "={{ $json.recipientEmail || 'francoguevara93@gmail.com' }}",
+        "subject": "📋 Exportación Kanban - Tablero Completado",
+        "html": "=<!DOCTYPE html>\n<html>\n<head><meta charset=\"UTF-8\"></head>\n<body style=\"font-family: Arial, sans-serif; line-height: 1.6; color: #333;\">\n  <div style=\"max-width: 600px; margin: 20px auto; background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);\">\n    <div style=\"background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0;\">\n      <h1 style=\"margin: 0; font-size: 24px;\">📋 Exportación Kanban Completada</h1>\n      <p style=\"margin: 10px 0 0 0; opacity: 0.9;\">Tu tablero ha sido exportado exitosamente</p>\n    </div>\n    <div style=\"padding: 30px;\">\n      <p style=\"font-size: 16px; margin-bottom: 20px;\">¡Hola! 👋</p>\n      <p style=\"font-size: 16px; margin-bottom: 20px;\">Tu exportación del tablero Kanban está lista y adjunta a este correo.</p>\n      \n      <div style=\"background: #f8f9fa; padding: 25px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #667eea;\">\n        <h3 style=\"margin: 0 0 15px 0; color: #333; font-size: 18px;\">📊 Resumen de la Exportación</h3>\n        <p style=\"margin: 8px 0; font-size: 14px;\"><strong>📈 Total de tarjetas exportadas:</strong> {{ $('Procesar Tarjetas').all().length }} tarjetas</p>\n        <p style=\"margin: 8px 0; font-size: 14px;\"><strong>📁 Nombre del archivo:</strong> kanban-export-{{ new Date().toISOString().split('T')[0] }}.csv</p>\n        <p style=\"margin: 8px 0; font-size: 14px;\"><strong>📅 Fecha de exportación:</strong> {{ new Date().toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' }) }}</p>\n        <p style=\"margin: 8px 0; font-size: 14px;\"><strong>⏰ Hora:</strong> {{ new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }) }}</p>\n      </div>\n      \n      <div style=\"background: #e8f4fd; padding: 20px; border-radius: 8px; margin: 25px 0; border: 1px solid #bee5eb;\">\n        <h4 style=\"margin: 0 0 10px 0; color: #0c5460; font-size: 16px;\">💡 ¿Cómo usar el archivo?</h4>\n        <ul style=\"margin: 0; padding-left: 20px; font-size: 14px; color: #0c5460;\">\n          <li>Abre el archivo CSV en Excel, Google Sheets o cualquier editor de hojas de cálculo</li>\n          <li>Las columnas incluyen: ID, Título, Descripción, Columna y Fecha de creación</li>\n          <li>Puedes filtrar y ordenar los datos según tus necesidades</li>\n        </ul>\n      </div>\n      \n      <p style=\"font-size: 16px; margin-top: 30px;\">¡Gracias por usar nuestro sistema Kanban! 🚀</p>\n      <p style=\"font-size: 14px; color: #666; margin-top: 20px;\">Si tienes alguna pregunta, no dudes en contactarnos.</p>\n    </div>\n    <div style=\"background: #f8f9fa; padding: 20px; text-align: center; border-radius: 0 0 8px 8px; border-top: 1px solid #dee2e6;\">\n      <p style=\"margin: 0; font-size: 12px; color: #6c757d;\">Este es un correo automático del sistema de gestión Kanban</p>\n    </div>\n  </div>\n</body>\n</html>",
+        "options": {
+          "attachments": "data"
+        }
+      },
+      "id": "6",
+      "name": "Enviar Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [1340, 300],
+      "credentials": {
+        "smtp": {
+          "name": "Gmail SMTP"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "check-rejected",
+              "leftValue": "={{ $json.rejected ? $json.rejected.length : 0 }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "7",
+      "name": "Verificar Error Email",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [1560, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \n  success: true, \n  message: 'Proceso de exportación iniciado correctamente', \n  email: $json.recipientEmail || 'francoguevara93@gmail.com',\n  timestamp: new Date().toISOString()\n} }}"
+      },
+      "id": "10",
+      "name": "Respuesta Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [2000, 300]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Obtener Columnas",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge CSV + Email",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Obtener Columnas": {
+      "main": [
+        [
+          {
+            "node": "Procesar Tarjetas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Procesar Tarjetas": {
+      "main": [
+        [
+          {
+            "node": "Convertir a CSV",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convertir a CSV": {
+      "main": [
+        [
+          {
+            "node": "Merge CSV + Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge CSV + Email": {
+      "main": [
+        [
+          {
+            "node": "Enviar Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar Email": {
+      "main": [
+        [
+          {
+            "node": "Verificar Error Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verificar Error Email": {
+      "main": [
+        [
+          {
+            "node": "Respuesta Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respuesta Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respuesta Webhook": {
+      "main": [[]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": true,
+  "versionId": "kanban-export"
+}

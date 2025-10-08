@@ -1,4 +1,13 @@
-import { IsString, IsNotEmpty, IsEmail, IsOptional, IsMongoId, IsArray } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsEmail,
+  IsOptional,
+  IsMongoId,
+  IsArray,
+  IsBoolean,
+} from 'class-validator';
+import { Allow } from 'class-validator';
 
 export class ExportBacklogDto {
   @IsMongoId()
@@ -19,4 +28,29 @@ export class ExportStatusDto {
   status: 'pending' | 'processing' | 'completed' | 'failed';
   message: string;
   timestamp: Date;
+}
+
+export class ExportConfirmDto {
+  @Allow()
+  @IsBoolean()
+  @IsNotEmpty()
+  success: boolean;
+
+  @Allow()
+  @IsString()
+  @IsNotEmpty()
+  email: string;
+
+  @Allow()
+  @IsString()
+  @IsNotEmpty()
+  details: string;
+
+  @Allow()
+  @IsOptional()
+  totalTasks?: string;
+
+  @Allow()
+  @IsOptional()
+  timestamp?: string;
 }
