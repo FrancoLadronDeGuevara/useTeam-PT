@@ -14,7 +14,7 @@ async function bootstrap() {
     new ValidationPipe({
       whitelist: true,
       transform: true,
-      forbidNonWhitelisted: true,
+      forbidNonWhitelisted: false,
     }),
   );
 
@@ -23,8 +23,9 @@ async function bootstrap() {
   const port = process.env.PORT || 3000;
   await app.listen(port);
 
-  console.log(`🚀 Backend running on: http://localhost:${port}`);
-  console.log(`📡 WebSocket server ready on: ws://localhost:${port}`);
+  console.log(`Backend ejecutándose en: http://localhost:${port}`);
+  console.log(`Servidor WebSocket listo en: ws://localhost:${port}`);
+  console.log(`Health check disponible en: http://localhost:${port}/api/health`);
 }
 
 bootstrap();

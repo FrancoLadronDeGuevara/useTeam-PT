@@ -1,0 +1,40 @@
+services:
+  # MongoDB Database
+  mongodb:
+    image: mongo:7.0
+    container_name: kanban-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    environment:
+      - MONGO_INITDB_DATABASE=kanban-board
+    networks:
+      - kanban-network
+
+  # N8N Workflow Automation
+  n8n:
+    image: n8nio/n8n:1.106.3
+    container_name: kanban-n8n
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    volumes:
+      - n8n_data:/home/node/.n8n
+    env_file:
+      - .env
+    networks:
+      - kanban-network
+    depends_on:
+      - mongodb
+
+volumes:
+  mongodb_data:
+    driver: local
+  n8n_data:
+    driver: local
+
+networks:
+  kanban-network:
+    driver: bridge
