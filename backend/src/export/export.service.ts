@@ -32,24 +32,20 @@ export class ExportService {
     try {
       this.logger.log(`Starting backlog export for board: ${exportDto.boardId}`);
 
-      const boardData = await this.boardService.getBoardWithData(exportDto.boardId);
-
-      const exportData = this.prepareExportData(boardData, exportDto.fields);
-
       if (!this.n8nWebhookUrl) {
         throw new Error('N8N_WEBHOOK_URL is not configured');
       }
 
-      const webhookPayload: N8nWebhookPayload = {
+      // Simple webhook payload to trigger N8N workflow
+      // The N8N workflow will fetch the data itself via /api/export/columns
+      const webhookPayload = {
         boardId: exportDto.boardId,
-        boardTitle: boardData.title,
         recipientEmail: exportDto.recipientEmail,
-        exportData: exportData,
-        exportDate: new Date().toISOString(),
         fields: exportDto.fields || ['id', 'title', 'description', 'column', 'createdAt'],
+        timestamp: new Date().toISOString(),
       };
 
-      this.logger.log(`Sending data to N8N webhook: ${this.n8nWebhookUrl}`);
+      this.logger.log(`Triggering N8N webhook: ${this.n8nWebhookUrl}`);
 
       const response = await axios.post(this.n8nWebhookUrl, webhookPayload, {
         headers: {
@@ -66,7 +62,6 @@ export class ExportService {
         data: {
           boardId: exportDto.boardId,
           recipientEmail: exportDto.recipientEmail,
-          totalCards: exportData.length,
           timestamp: new Date(),
         },
       };
@@ -151,6 +146,75 @@ export class ExportService {
         message: 'N8N service is not reachable',
         error: error.message,
       };
+    }
+  }
+
+  async getAllColumns(): Promise<any[]> {
+    try {
+      // Obtener todos los boards y sus columnas
+      const boards = await this.boardService.getAllBoards();
+
+      const allColumns: any[] = [];
+
+      for (const board of boards) {
+        const boardData = await this.boardService.getBoardWithData((board as any)._id.toString());
+
+        for (const column of boardData.columns) {
+          allColumns.push({
+            _id: column._id,
+            name: column.title,
+            boardId: (board as any)._id,
+            boardTitle: (board as any).title,
+            cards: column.cards.map((card: any) => ({
+              _id: card._id,
+              title: card.title,
+              description: card.description || '',
+              createdAt: card.createdAt,
+              updatedAt: card.updatedAt,
+            })),
+          });
+        }
+      }
+
+      return allColumns;
+    } catch (error) {
+      this.logger.error('Error getting all columns:', error);
+      throw new HttpException(
+        {
+          status: 'error',
+          message: 'Failed to get columns',
+          error: error.message,
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  async confirmExport(confirmDto: any): Promise<any> {
+    try {
+      this.logger.log(`Export confirmation received: ${JSON.stringify(confirmDto)}`);
+
+      // Aquí puedes agregar lógica adicional como:
+      // - Guardar el estado de la exportación en base de datos
+      // - Enviar notificaciones
+      // - Actualizar estadísticas
+
+      return {
+        status: 'success',
+        message: 'Export confirmation processed',
+        timestamp: new Date(),
+        details: confirmDto,
+      };
+    } catch (error) {
+      this.logger.error('Error processing export confirmation:', error);
+      throw new HttpException(
+        {
+          status: 'error',
+          message: 'Failed to process export confirmation',
+          error: error.message,
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
   }
 }
