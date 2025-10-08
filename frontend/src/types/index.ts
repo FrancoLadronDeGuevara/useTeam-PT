@@ -2,6 +2,8 @@ export interface IBoard {
   _id: string;
   title: string;
   description: string;
+  primaryColor?: string;
+  backgroundColor?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -21,6 +23,8 @@ export interface ICard {
   description: string;
   columnId: string | { _id: string; title: string };
   position: number;
+  backgroundColor?: string;
+  textColor?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -36,6 +40,8 @@ export interface IBoardWithData extends IBoard {
 export interface CreateBoardDto {
   title: string;
   description?: string;
+  primaryColor?: string;
+  backgroundColor?: string;
 }
 
 export interface CreateColumnDto {
@@ -49,11 +55,15 @@ export interface CreateCardDto {
   description?: string;
   columnId: string;
   position?: number;
+  backgroundColor?: string;
+  textColor?: string;
 }
 
 export interface UpdateCardDto {
   title?: string;
   description?: string;
+  backgroundColor?: string;
+  textColor?: string;
 }
 
 export interface MoveCardDto {

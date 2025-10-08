@@ -1,6 +1,7 @@
 import { useState, FormEvent } from "react";
 import { X } from "lucide-react";
 import { useBoardContext } from "../../context/BoardContext";
+import ColorPicker from "../UI/ColorPicker";
 import type { ICard } from "../../types";
 
 interface EditCardModalProps {
@@ -13,6 +14,8 @@ const EditCardModal = ({ card, onClose }: EditCardModalProps) => {
   const [formData, setFormData] = useState({
     title: card.title,
     description: card.description || "",
+    backgroundColor: card.backgroundColor || "#ffffff",
+    textColor: card.textColor || "#000000",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -32,25 +35,25 @@ const EditCardModal = ({ card, onClose }: EditCardModalProps) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+    <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto p-4">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-slate-900">Editar Tarjeta</h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-bold text-slate-900">Editar Tarjeta</h2>
           <button
             onClick={onClose}
             className="text-slate-400 hover:text-slate-600 transition-colors"
           >
-            <X size={24} />
+            <X size={20} />
           </button>
         </div>
 
         {/* Form */}
         <form onSubmit={handleSubmit}>
-          <div className="space-y-4">
+          <div className="space-y-3">
             {/* Title */}
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
+              <label className="block text-sm font-medium text-slate-700 mb-1">
                 Título de la Tarjeta *
               </label>
               <input
@@ -60,7 +63,7 @@ const EditCardModal = ({ card, onClose }: EditCardModalProps) => {
                   setFormData({ ...formData, title: e.target.value })
                 }
                 placeholder="ej., Arreglar error de login"
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm"
                 required
                 autoFocus
               />
@@ -68,7 +71,7 @@ const EditCardModal = ({ card, onClose }: EditCardModalProps) => {
 
             {/* Description */}
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
+              <label className="block text-sm font-medium text-slate-700 mb-1">
                 Descripción
               </label>
               <textarea
@@ -77,25 +80,48 @@ const EditCardModal = ({ card, onClose }: EditCardModalProps) => {
                   setFormData({ ...formData, description: e.target.value })
                 }
                 placeholder="Agregar más detalles..."
-                rows={4}
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-none"
+                rows={3}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-none text-sm"
               />
+            </div>
+
+            {/* Color Picker */}
+            <div className="space-y-3 pt-3 border-t border-slate-200">
+              <h3 className="text-sm font-medium text-slate-700">Colores</h3>
+
+              <div className="grid grid-cols-2 gap-3">
+                <ColorPicker
+                  value={formData.backgroundColor}
+                  onChange={(color) =>
+                    setFormData({ ...formData, backgroundColor: color })
+                  }
+                  label="Fondo"
+                />
+
+                <ColorPicker
+                  value={formData.textColor}
+                  onChange={(color) =>
+                    setFormData({ ...formData, textColor: color })
+                  }
+                  label="Texto"
+                />
+              </div>
             </div>
           </div>
 
           {/* Actions */}
-          <div className="flex gap-3 mt-6">
+          <div className="flex gap-2 mt-4 pt-4 border-t border-slate-200">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors"
+              className="flex-1 px-3 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors text-sm"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={!formData.title.trim() || isSubmitting}
-              className="flex-1 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
             >
               {isSubmitting ? "Guardando..." : "Guardar Cambios"}
             </button>

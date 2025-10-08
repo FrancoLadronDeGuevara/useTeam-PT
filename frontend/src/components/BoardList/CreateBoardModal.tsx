@@ -1,6 +1,7 @@
 import { useState, FormEvent } from "react";
 import { X } from "lucide-react";
 import { useBoardContext } from "../../context/BoardContext";
+import ColorPicker from "../UI/ColorPicker";
 
 interface CreateBoardModalProps {
   onClose: () => void;
@@ -11,6 +12,8 @@ const CreateBoardModal = ({ onClose }: CreateBoardModalProps) => {
   const [formData, setFormData] = useState({
     title: "",
     description: "",
+    primaryColor: "#3b82f6",
+    backgroundColor: "#f8fafc",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -30,7 +33,7 @@ const CreateBoardModal = ({ onClose }: CreateBoardModalProps) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
@@ -79,6 +82,29 @@ const CreateBoardModal = ({ onClose }: CreateBoardModalProps) => {
                 placeholder="Breve descripción de este tablero..."
                 rows={3}
                 className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-none"
+              />
+            </div>
+
+            {/* Color Picker */}
+            <div className="space-y-4 pt-4 border-t border-slate-200">
+              <h3 className="text-sm font-medium text-slate-700">
+                Personalización de colores
+              </h3>
+
+              <ColorPicker
+                value={formData.primaryColor}
+                onChange={(color) =>
+                  setFormData({ ...formData, primaryColor: color })
+                }
+                label="Color de Borde"
+              />
+
+              <ColorPicker
+                value={formData.backgroundColor}
+                onChange={(color) =>
+                  setFormData({ ...formData, backgroundColor: color })
+                }
+                label="Color de fondo"
               />
             </div>
           </div>

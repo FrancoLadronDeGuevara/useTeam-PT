@@ -277,7 +277,16 @@ export class BoardGateway implements OnGatewayConnection, OnGatewayDisconnect {
    */
   @SubscribeMessage('board:update')
   async handleUpdateBoard(
-    @MessageBody() data: { id: string; updates: { title: string; description?: string } },
+    @MessageBody()
+    data: {
+      id: string;
+      updates: {
+        title: string;
+        description?: string;
+        primaryColor?: string;
+        backgroundColor?: string;
+      };
+    },
     @ConnectedSocket() client: Socket,
   ) {
     try {
@@ -294,12 +303,54 @@ export class BoardGateway implements OnGatewayConnection, OnGatewayDisconnect {
         id: data.id,
         title: data.updates.title,
         description: data.updates.description,
+        primaryColor: data.updates.primaryColor,
+        backgroundColor: data.updates.backgroundColor,
       });
 
       this.logger.log(`Notificación enviada a TODOS los clientes conectados (sala global)`);
       return { success: true, message: 'Tablero actualizado' };
     } catch (error) {
       this.logger.error('Error notificando actualización de tablero:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Maneja la creación de un tablero.
+   * Notifica a todos los clientes conectados sobre la creación.
+   */
+  @SubscribeMessage('board:create')
+  async handleCreateBoard(@MessageBody() board: any, @ConnectedSocket() client: Socket) {
+    try {
+      this.logger.log(`Recibida creación de tablero: ${board._id}`);
+
+      // Notificamos a TODOS los clientes conectados (sala global)
+      this.server.emit('board:created', board);
+
+      this.logger.log(`Notificación de creación enviada a TODOS los clientes conectados`);
+      return { success: true, message: 'Tablero creado' };
+    } catch (error) {
+      this.logger.error('Error notificando creación de tablero:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Maneja la eliminación de un tablero.
+   * Notifica a todos los clientes conectados sobre la eliminación.
+   */
+  @SubscribeMessage('board:delete')
+  async handleDeleteBoard(@MessageBody() data: { id: string }, @ConnectedSocket() client: Socket) {
+    try {
+      this.logger.log(`Recibida eliminación de tablero: ${data.id}`);
+
+      // Notificamos a TODOS los clientes conectados (sala global)
+      this.server.emit('board:deleted', { id: data.id });
+
+      this.logger.log(`Notificación de eliminación enviada a TODOS los clientes conectados`);
+      return { success: true, message: 'Tablero eliminado' };
+    } catch (error) {
+      this.logger.error('Error notificando eliminación de tablero:', error);
       return { success: false, error: error.message };
     }
   }

@@ -152,13 +152,32 @@ class WebSocketService {
   }
 
   /**
+   * Notifica la creación de un tablero a otros usuarios.
+   */
+  createBoard(board: any): void {
+    this.socket?.emit(WS_CLIENT_EVENTS.BOARD_CREATE, board);
+  }
+
+  /**
    * Notifica la actualización de un tablero a otros usuarios.
    */
   updateBoard(
     id: string,
-    updates: { title: string; description?: string }
+    updates: {
+      title: string;
+      description?: string;
+      primaryColor?: string;
+      backgroundColor?: string;
+    }
   ): void {
     this.socket?.emit(WS_CLIENT_EVENTS.BOARD_UPDATE, { id, updates });
+  }
+
+  /**
+   * Notifica la eliminación de un tablero a otros usuarios.
+   */
+  deleteBoard(id: string): void {
+    this.socket?.emit(WS_CLIENT_EVENTS.BOARD_DELETE, { id });
   }
 
   /**

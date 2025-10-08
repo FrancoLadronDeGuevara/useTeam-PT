@@ -9,6 +9,12 @@ export class Board extends Document {
   @Prop({ default: '' })
   description: string;
 
+  @Prop({ default: '#3b82f6', trim: true })
+  primaryColor: string;
+
+  @Prop({ default: '#f8fafc', trim: true })
+  backgroundColor: string;
+
   @Prop({ type: Date, default: Date.now })
   createdAt: Date;
 

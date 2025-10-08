@@ -6,7 +6,7 @@ import {
   findColumnByCardId,
   findColumnById,
 } from "../utils/helpers";
-import type { ICard, IColumnWithCards, MoveCardDto } from "../types";
+import type { ICard, IColumnWithCards } from "../types";
 
 /**
  * Hook personalizado para manejar la lógica de arrastrar y soltar tarjetas.

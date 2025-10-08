@@ -62,8 +62,6 @@ export const boardAPI = {
  */
 export const columnAPI = {
   create: (data: CreateColumnDto) => api.post<IColumn>("/boards/columns", data),
-  getByBoardId: (boardId: string) =>
-    api.get<IColumn[]>(`/boards/${boardId}/columns`),
   update: (id: string, data: Partial<CreateColumnDto>) =>
     api.put<IColumn>(`/boards/columns/${id}`, data),
   delete: (id: string) => api.delete(`/boards/columns/${id}`),
@@ -77,10 +75,6 @@ export const columnAPI = {
  */
 export const cardAPI = {
   create: (data: CreateCardDto) => api.post<ICard>("/boards/cards", data),
-  getByColumnId: (columnId: string) =>
-    api.get<ICard[]>(`/boards/columns/${columnId}/cards`),
-  getByBoardId: (boardId: string) =>
-    api.get<ICard[]>(`/boards/${boardId}/cards`),
   update: (id: string, data: UpdateCardDto) =>
     api.put<ICard>(`/boards/cards/${id}`, data),
   delete: (id: string) => api.delete(`/boards/cards/${id}`),
@@ -94,7 +88,6 @@ export const cardAPI = {
  */
 export const exportAPI = {
   backlog: (data: ExportBacklogDto) => api.post("/export/backlog", data),
-  health: () => api.get("/export/health"),
 };
 
 export default api;

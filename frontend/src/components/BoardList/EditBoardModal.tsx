@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { X } from "lucide-react";
 import { useBoardContext } from "../../context/BoardContext";
+import ColorPicker from "../UI/ColorPicker";
 import toast from "react-hot-toast";
 import type { IBoard } from "../../types";
 
@@ -13,11 +14,19 @@ const EditBoardModal = ({ board, onClose }: EditBoardModalProps) => {
   const { updateBoard } = useBoardContext();
   const [title, setTitle] = useState(board.title);
   const [description, setDescription] = useState(board.description || "");
+  const [primaryColor, setPrimaryColor] = useState(
+    board.primaryColor || "#3b82f6"
+  );
+  const [backgroundColor, setBackgroundColor] = useState(
+    board.backgroundColor || "#f8fafc"
+  );
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     setTitle(board.title);
     setDescription(board.description || "");
+    setPrimaryColor(board.primaryColor || "#3b82f6");
+    setBackgroundColor(board.backgroundColor || "#f8fafc");
   }, [board]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -33,6 +42,8 @@ const EditBoardModal = ({ board, onClose }: EditBoardModalProps) => {
       await updateBoard(board._id, {
         title: title.trim(),
         description: description.trim() || undefined,
+        primaryColor,
+        backgroundColor,
       });
       onClose();
     } catch (error) {
@@ -44,7 +55,7 @@ const EditBoardModal = ({ board, onClose }: EditBoardModalProps) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50">
       <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-md mx-4">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-slate-200 dark:border-slate-700">
@@ -89,6 +100,25 @@ const EditBoardModal = ({ board, onClose }: EditBoardModalProps) => {
                 className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white resize-none"
                 placeholder="Descripción del tablero (opcional)"
                 rows={3}
+              />
+            </div>
+
+            {/* Color Picker */}
+            <div className="space-y-4 pt-4 border-t border-slate-200 dark:border-slate-600">
+              <h3 className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                Personalización de colores
+              </h3>
+
+              <ColorPicker
+                value={primaryColor}
+                onChange={setPrimaryColor}
+                label="Color de Borde"
+              />
+
+              <ColorPicker
+                value={backgroundColor}
+                onChange={setBackgroundColor}
+                label="Color de fondo"
               />
             </div>
           </div>
