@@ -10,23 +10,22 @@ async function bootstrap() {
     },
   });
 
-  // Habilitar validación global
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
       transform: true,
-      forbidNonWhitelisted: false, // Cambiado temporalmente para permitir propiedades adicionales
+      forbidNonWhitelisted: false,
     }),
   );
 
-  // Prefijo global para todas las rutas
   app.setGlobalPrefix('api');
 
   const port = process.env.PORT || 3000;
   await app.listen(port);
 
-  console.log(`Backend running on: http://localhost:${port}`);
-  console.log(`WebSocket server ready on: ws://localhost:${port}`);
+  console.log(`Backend ejecutándose en: http://localhost:${port}`);
+  console.log(`Servidor WebSocket listo en: ws://localhost:${port}`);
+  console.log(`Health check disponible en: http://localhost:${port}/api/health`);
 }
 
 bootstrap();

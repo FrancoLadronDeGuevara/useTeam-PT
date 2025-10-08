@@ -3,6 +3,9 @@ import { BoardService } from '../board/board.service';
 import { ExportBacklogDto } from './dto/export.dto';
 import axios from 'axios';
 
+/**
+ * Interfaz para los datos de exportación de tarjetas
+ */
 interface CardExportData {
   id: string;
   title: string;
@@ -12,6 +15,9 @@ interface CardExportData {
   [key: string]: any;
 }
 
+/**
+ * Interfaz para el payload del webhook de N8N
+ */
 interface N8nWebhookPayload {
   boardId: string;
   boardTitle: string;
@@ -21,6 +27,12 @@ interface N8nWebhookPayload {
   fields: string[];
 }
 
+/**
+ * Servicio para manejar las exportaciones de tableros Kanban
+ *
+ * Proporciona funcionalidades para exportar tableros a CSV mediante N8N,
+ * verificar el estado del sistema y obtener datos para la exportación.
+ */
 @Injectable()
 export class ExportService {
   private readonly logger = new Logger(ExportService.name);
@@ -28,16 +40,22 @@ export class ExportService {
 
   constructor(private readonly boardService: BoardService) {}
 
+  /**
+   * Inicia el proceso de exportación de un tablero
+   *
+   * @param exportDto - Datos de la exportación
+   * @returns Respuesta con el estado de la solicitud
+   */
   async exportBacklog(exportDto: ExportBacklogDto): Promise<any> {
     try {
-      this.logger.log(`Starting backlog export for board: ${exportDto.boardId}`);
+      this.logger.log(`Iniciando exportación del tablero: ${exportDto.boardId}`);
 
       if (!this.n8nWebhookUrl) {
-        throw new Error('N8N_WEBHOOK_URL is not configured');
+        throw new Error('N8N_WEBHOOK_URL no está configurado');
       }
 
-      // Simple webhook payload to trigger N8N workflow
-      // The N8N workflow will fetch the data itself via /api/export/columns
+      // Payload simple para activar el workflow de N8N
+      // El workflow de N8N obtendrá los datos via /api/export/columns
       const webhookPayload = {
         boardId: exportDto.boardId,
         recipientEmail: exportDto.recipientEmail,
@@ -45,7 +63,7 @@ export class ExportService {
         timestamp: new Date().toISOString(),
       };
 
-      this.logger.log(`Triggering N8N webhook: ${this.n8nWebhookUrl}`);
+      this.logger.log(`Activando webhook de N8N: ${this.n8nWebhookUrl}`);
 
       const response = await axios.post(this.n8nWebhookUrl, webhookPayload, {
         headers: {
@@ -54,11 +72,11 @@ export class ExportService {
         timeout: 10000,
       });
 
-      this.logger.log(`N8N webhook response: ${response.status}`);
+      this.logger.log(`Respuesta del webhook N8N: ${response.status}`);
 
       return {
         status: 'success',
-        message: 'Export request sent successfully',
+        message: 'Solicitud de exportación enviada correctamente',
         data: {
           boardId: exportDto.boardId,
           recipientEmail: exportDto.recipientEmail,
@@ -66,13 +84,13 @@ export class ExportService {
         },
       };
     } catch (error) {
-      this.logger.error('Error exporting backlog:', error);
+      this.logger.error('Error al exportar tablero:', error);
 
       if (axios.isAxiosError(error)) {
         throw new HttpException(
           {
             status: 'error',
-            message: 'Failed to communicate with N8N service',
+            message: 'Error al comunicarse con el servicio N8N',
             error: error.message,
           },
           HttpStatus.SERVICE_UNAVAILABLE,
@@ -82,7 +100,7 @@ export class ExportService {
       throw new HttpException(
         {
           status: 'error',
-          message: 'Failed to export backlog',
+          message: 'Error al exportar el tablero',
           error: error.message,
         },
         HttpStatus.INTERNAL_SERVER_ERROR,
@@ -120,12 +138,17 @@ export class ExportService {
     return exportData;
   }
 
+  /**
+   * Verifica el estado de salud del servicio N8N
+   *
+   * @returns Estado de conectividad con N8N
+   */
   async checkN8nHealth(): Promise<any> {
     try {
       if (!this.n8nWebhookUrl) {
         return {
           status: 'error',
-          message: 'N8N webhook URL not configured',
+          message: 'URL del webhook N8N no configurada',
         };
       }
 
@@ -136,22 +159,30 @@ export class ExportService {
 
       return {
         status: 'ok',
-        message: 'N8N service is reachable',
+        message: 'Servicio N8N accesible',
         webhookUrl: this.n8nWebhookUrl,
         responseStatus: response.status,
       };
     } catch (error) {
       return {
         status: 'error',
-        message: 'N8N service is not reachable',
+        message: 'Servicio N8N no accesible',
         error: error.message,
       };
     }
   }
 
+  /**
+   * Obtiene todas las columnas y tarjetas de todos los tableros
+   *
+   * Este método es utilizado por el workflow de N8N para obtener los datos
+   * que serán exportados en el archivo CSV.
+   *
+   * @returns Array con todas las columnas y sus tarjetas
+   */
   async getAllColumns(): Promise<any[]> {
     try {
-      // Obtener todos los boards y sus columnas
+      // Obtener todos los tableros y sus columnas
       const boards = await this.boardService.getAllBoards();
 
       const allColumns: any[] = [];
@@ -178,39 +209,11 @@ export class ExportService {
 
       return allColumns;
     } catch (error) {
-      this.logger.error('Error getting all columns:', error);
+      this.logger.error('Error al obtener columnas:', error);
       throw new HttpException(
         {
           status: 'error',
-          message: 'Failed to get columns',
-          error: error.message,
-        },
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
-  }
-
-  async confirmExport(confirmDto: any): Promise<any> {
-    try {
-      this.logger.log(`Export confirmation received: ${JSON.stringify(confirmDto)}`);
-
-      // Aquí puedes agregar lógica adicional como:
-      // - Guardar el estado de la exportación en base de datos
-      // - Enviar notificaciones
-      // - Actualizar estadísticas
-
-      return {
-        status: 'success',
-        message: 'Export confirmation processed',
-        timestamp: new Date(),
-        details: confirmDto,
-      };
-    } catch (error) {
-      this.logger.error('Error processing export confirmation:', error);
-      throw new HttpException(
-        {
-          status: 'error',
-          message: 'Failed to process export confirmation',
+          message: 'Error al obtener las columnas',
           error: error.message,
         },
         HttpStatus.INTERNAL_SERVER_ERROR,

@@ -1,31 +1,33 @@
-import { Controller, Get, Post, Body, HttpCode, HttpStatus, Logger } from '@nestjs/common';
+import { Controller, Get } from '@nestjs/common';
 import { HealthService } from './health.service';
 
+/**
+ * Controlador para verificaciones de salud del sistema
+ *
+ * Proporciona endpoints para verificar el estado general de la aplicación
+ * y la conectividad con la base de datos MongoDB.
+ */
 @Controller('health')
 export class HealthController {
-  private readonly logger = new Logger(HealthController.name);
-
   constructor(private readonly healthService: HealthService) {}
 
+  /**
+   * Verifica el estado general de la aplicación
+   *
+   * @returns Estado de la aplicación con información básica
+   */
   @Get()
   check() {
     return this.healthService.check();
   }
 
+  /**
+   * Verifica el estado de la conexión con la base de datos
+   *
+   * @returns Estado de conectividad con MongoDB
+   */
   @Get('db')
   checkDatabase() {
     return this.healthService.checkDatabase();
-  }
-
-  @Post('confirm-export')
-  @HttpCode(HttpStatus.OK)
-  confirmExport(@Body() body: any) {
-    this.logger.log(`Export confirmation received: ${JSON.stringify(body)}`);
-    return {
-      status: 'success',
-      message: 'Export confirmation processed',
-      timestamp: new Date(),
-      details: body,
-    };
   }
 }

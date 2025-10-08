@@ -18,10 +18,10 @@ import appConfig from './config/app.config';
     MongooseModule.forRoot(process.env.MONGODB_URI || 'mongodb://localhost:27017/kanban-board', {
       connectionFactory: (connection) => {
         connection.on('connected', () => {
-          console.log('MongoDB connected successfully');
+          console.log('MongoDB conectado exitosamente');
         });
         connection.on('error', (error) => {
-          console.error('MongoDB connection error:', error);
+          console.error('Error de conexión a MongoDB:', error);
         });
         return connection;
       },
