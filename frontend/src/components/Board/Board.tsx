@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -6,31 +6,29 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
-  DragStartEvent,
-  DragEndEvent,
 } from "@dnd-kit/core";
 import { Plus, Download } from "lucide-react";
 import { useBoardContext } from "../../context/BoardContext";
+import { useDragAndDrop } from "../../hooks/useDragAndDrop";
+import { useModal } from "../../hooks/useModal";
 import websocketService from "../../services/websocket";
 import Column from "./Column";
 import Card from "./Card";
 import CreateColumnModal from "./CreateColumnModal";
 import ExportModal from "./ExportModal";
 import EditBoardModal from "../BoardList/EditBoardModal";
-import KebabMenu from "../UI/KebabMenu";
-import type { ICard, IColumnWithCards } from "../../types";
 
 interface BoardProps {
   boardId: string;
 }
 
 const Board = ({ boardId }: BoardProps) => {
-  const { currentBoard, fetchBoardWithData, moveCard, loading, deleteBoard } =
-    useBoardContext();
-  const [activeCard, setActiveCard] = useState<ICard | null>(null);
-  const [showCreateColumnModal, setShowCreateColumnModal] = useState(false);
-  const [showExportModal, setShowExportModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
+  const { currentBoard, fetchBoardWithData, loading } = useBoardContext();
+  const { activeCard, handleDragStart, handleDragEnd } =
+    useDragAndDrop(currentBoard);
+  const createColumnModal = useModal();
+  const exportModal = useModal();
+  const editModal = useModal();
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -44,155 +42,9 @@ const Board = ({ boardId }: BoardProps) => {
     if (boardId) {
       fetchBoardWithData(boardId);
       // Conectar WebSocket solo una vez por pestaña
-      const socket = websocketService.connect();
-      console.log(
-        "Board: WebSocket conectado para tablero",
-        boardId,
-        "Socket ID:",
-        socket.id
-      );
+      websocketService.connect();
     }
   }, [boardId, fetchBoardWithData]);
-
-  const handleDragStart = (event: DragStartEvent) => {
-    const { active } = event;
-    const card = findCard(active.id as string);
-    setActiveCard(card);
-  };
-
-  const handleDragEnd = async (event: DragEndEvent) => {
-    const { active, over } = event;
-
-    if (!over) {
-      setActiveCard(null);
-      return;
-    }
-
-    const activeCardId = active.id as string;
-    const overCardId = over.id as string;
-
-    if (activeCardId === overCardId) {
-      setActiveCard(null);
-      return;
-    }
-
-    const activeColumn = findColumnByCardId(activeCardId);
-    const overColumn =
-      findColumnByCardId(overCardId) || findColumnById(overCardId);
-
-    if (!activeColumn || !overColumn) {
-      setActiveCard(null);
-      return;
-    }
-
-    // dnd-kit suministra el índice sortable en data.current; lo tratamos como opcional
-    type SortableData = { current?: { sortable?: { index?: number } } };
-    const activeSortableIndex = (
-      active.data as unknown as SortableData | undefined
-    )?.current?.sortable?.index;
-    const overSortableIndex = (over.data as unknown as SortableData | undefined)
-      ?.current?.sortable?.index;
-
-    const activeCardIndex =
-      typeof activeSortableIndex === "number"
-        ? activeSortableIndex
-        : activeColumn.cards.findIndex((c) => c._id === activeCardId);
-    let overCardIndex =
-      typeof overSortableIndex === "number"
-        ? overSortableIndex
-        : overColumn.cards.findIndex((c) => c._id === overCardId);
-
-    console.log("Index calculation:", {
-      activeCardId,
-      activeSortableIndex,
-      activeCardIndex,
-      overCardId,
-      overSortableIndex,
-      overCardIndex,
-      activeColumnCards: activeColumn.cards.map((c) => c._id),
-      overColumnCards: overColumn.cards.map((c) => c._id),
-    });
-
-    // Calcular índice destino correctamente:
-    // - Si el "over" es la columna (soltar en el contenedor), colocar al final
-    // - Si la columna está vacía, índice 0
-    // - Si "over" es una card, usar su índice como base
-    const isOverColumn = overColumn._id === overCardId;
-
-    if (isOverColumn) {
-      // Soltar en el contenedor de la columna
-      if (activeColumn._id === overColumn._id) {
-        // misma columna → al final (último índice válido)
-        overCardIndex = Math.max(0, overColumn.cards.length - 1);
-      } else {
-        // columna distinta → apendea al final
-        overCardIndex = overColumn.cards.length;
-      }
-    } else if (overCardIndex === -1) {
-      // Columna vacía
-      overCardIndex = 0;
-    }
-
-    // Validar que las posiciones sean válidas
-    if (activeCardIndex < 0 || overCardIndex < 0) {
-      console.error("Invalid positions:", { activeCardIndex, overCardIndex });
-      setActiveCard(null);
-      return;
-    }
-
-    console.log("Moving card with data:", {
-      cardId: activeCardId,
-      sourceColumnId: activeColumn._id,
-      destinationColumnId: overColumn._id,
-      sourcePosition: activeCardIndex,
-      destinationPosition: overCardIndex,
-    });
-
-    try {
-      await moveCard({
-        cardId: activeCardId,
-        sourceColumnId: activeColumn._id,
-        destinationColumnId: overColumn._id,
-        sourcePosition: activeCardIndex,
-        destinationPosition: overCardIndex,
-      });
-    } catch (error) {
-      console.error("Error moving card:", error);
-    }
-
-    setActiveCard(null);
-  };
-
-  const findCard = (cardId: string): ICard | null => {
-    if (!currentBoard) return null;
-    for (const column of currentBoard.columns) {
-      const card = column.cards.find((c) => c._id === cardId);
-      if (card) return card;
-    }
-    return null;
-  };
-
-  const findColumnByCardId = (cardId: string): IColumnWithCards | undefined => {
-    if (!currentBoard) return undefined;
-    return currentBoard.columns.find((col) =>
-      col.cards.some((card) => card._id === cardId)
-    );
-  };
-
-  const findColumnById = (columnId: string): IColumnWithCards | undefined => {
-    if (!currentBoard) return undefined;
-    return currentBoard.columns.find((col) => col._id === columnId);
-  };
-
-  const handleDeleteBoard = async () => {
-    if (currentBoard && window.confirm("¿Deseas eliminar este tablero?")) {
-      await deleteBoard(currentBoard._id);
-    }
-  };
-
-  const handleEditBoard = () => {
-    setShowEditModal(true);
-  };
 
   if (loading || !currentBoard) {
     return (
@@ -207,7 +59,7 @@ const Board = ({ boardId }: BoardProps) => {
       {/* Board Actions */}
       <div className="mb-6 flex items-center justify-between">
         <button
-          onClick={() => setShowCreateColumnModal(true)}
+          onClick={createColumnModal.openModal}
           className="flex items-center gap-2 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 transition-colors shadow-sm"
         >
           <Plus size={18} />
@@ -216,19 +68,12 @@ const Board = ({ boardId }: BoardProps) => {
 
         <div className="flex items-center gap-2">
           <button
-            onClick={() => setShowExportModal(true)}
+            onClick={exportModal.openModal}
             className="flex items-center gap-2 bg-green-500 hover:bg-green-600 dark:bg-green-600 dark:hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors shadow-sm"
           >
             <Download size={18} />
             Exportar Backlog
           </button>
-          <KebabMenu
-            onEdit={handleEditBoard}
-            onDelete={handleDeleteBoard}
-            editLabel="Editar tablero"
-            deleteLabel="Eliminar tablero"
-            className="ml-2"
-          />
         </div>
       </div>
 
@@ -254,7 +99,7 @@ const Board = ({ boardId }: BoardProps) => {
                   Agrega una nueva columna para comenzar
                 </p>
                 <button
-                  onClick={() => setShowCreateColumnModal(true)}
+                  onClick={createColumnModal.openModal}
                   className="inline-flex items-center gap-2 bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
                 >
                   <Plus size={18} />
@@ -276,26 +121,20 @@ const Board = ({ boardId }: BoardProps) => {
       </DndContext>
 
       {/* Modals */}
-      {showCreateColumnModal && (
+      {createColumnModal.isOpen && (
         <CreateColumnModal
           boardId={boardId}
-          onClose={() => setShowCreateColumnModal(false)}
+          onClose={createColumnModal.closeModal}
         />
       )}
 
-      {showExportModal && (
-        <ExportModal
-          boardId={boardId}
-          onClose={() => setShowExportModal(false)}
-        />
+      {exportModal.isOpen && (
+        <ExportModal boardId={boardId} onClose={exportModal.closeModal} />
       )}
 
       {/* Edit Board Modal */}
-      {showEditModal && currentBoard && (
-        <EditBoardModal
-          board={currentBoard}
-          onClose={() => setShowEditModal(false)}
-        />
+      {editModal.isOpen && currentBoard && (
+        <EditBoardModal board={currentBoard} onClose={editModal.closeModal} />
       )}
     </div>
   );

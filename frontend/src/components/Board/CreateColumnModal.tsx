@@ -21,7 +21,7 @@ const CreateColumnModal = ({ boardId, onClose }: CreateColumnModalProps) => {
       await createColumn({ title, boardId });
       onClose();
     } catch (error) {
-      console.error("Error creating column:", error);
+      console.error("Error creando columna:", error);
     } finally {
       setIsSubmitting(false);
     }
@@ -32,7 +32,7 @@ const CreateColumnModal = ({ boardId, onClose }: CreateColumnModalProps) => {
       <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-slate-900">Add Column</h2>
+          <h2 className="text-2xl font-bold text-slate-900">Agregar Columna</h2>
           <button
             onClick={onClose}
             className="text-slate-400 hover:text-slate-600 transition-colors"
@@ -45,13 +45,13 @@ const CreateColumnModal = ({ boardId, onClose }: CreateColumnModalProps) => {
         <form onSubmit={handleSubmit}>
           <div className="mb-6">
             <label className="block text-sm font-medium text-slate-700 mb-2">
-              Column Title *
+              Título de la Columna *
             </label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g., To Do, In Progress, Done"
+              placeholder="ej., Por Hacer, En Progreso, Completado"
               className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
               required
               autoFocus
@@ -65,14 +65,14 @@ const CreateColumnModal = ({ boardId, onClose }: CreateColumnModalProps) => {
               onClick={onClose}
               className="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors"
             >
-              Cancel
+              Cancelar
             </button>
             <button
               type="submit"
               disabled={!title.trim() || isSubmitting}
               className="flex-1 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isSubmitting ? "Adding..." : "Add Column"}
+              {isSubmitting ? "Agregando..." : "Agregar Columna"}
             </button>
           </div>
         </form>

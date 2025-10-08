@@ -50,7 +50,7 @@ Una aplicación tipo **Trello** desarrollada con React.js y NestJS que permite l
 ### 1. Clonar el Repositorio
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/FrancoLadronDeGuevara/useTeam-PT.git
 cd useTeam-PT
 ```
 
@@ -137,25 +137,11 @@ cd frontend
 npm run dev
 ```
 
-### Producción
-
-```bash
-# Backend
-cd backend
-npm run build
-npm run start:prod
-
-# Frontend
-cd frontend
-npm run build
-npm run preview
-```
-
 ## 📱 Uso de la Aplicación
 
 ### 1. Crear y Gestionar Tableros
 
-- Haz clic en "Create New Board"
+- Haz clic en "Crear Nuevo Tablero"
 - Agrega columnas personalizadas
 - Crea tarjetas con títulos y descripciones
 
@@ -167,7 +153,7 @@ npm run preview
 
 ### 3. Exportar Backlog
 
-- Haz clic en el botón "Export" (📥) en cualquier tablero
+- Haz clic en el botón "Export" (📥)
 - Ingresa tu email de destino
 - Recibe un archivo CSV con todas las tarjetas
 
@@ -273,39 +259,19 @@ docker-compose down
 docker-compose restart
 ```
 
-## 🧪 Testing
-
-### Backend
-
-```bash
-cd backend
-npm run test          # Unit tests
-npm run test:e2e      # E2E tests
-npm run test:cov      # Coverage
-```
-
-### Frontend
-
-```bash
-cd frontend
-npm run test          # Unit tests
-npm run test:coverage # Coverage
-```
-
 ## 📝 Scripts Disponibles
 
 ### Backend
 
 - `npm run start:dev` - Desarrollo con hot reload
-- `npm run build` - Compilar para producción
+- `npm run build` - Compilar
 - `npm run start:prod` - Ejecutar en producción
 - `npm run seed` - Poblar base de datos
 
 ### Frontend
 
 - `npm run dev` - Servidor de desarrollo
-- `npm run build` - Compilar para producción
-- `npm run preview` - Vista previa de producción
+- `npm run build` - Compilar
 - `npm run lint` - Linter
 
 ## 🛠️ Solución de Problemas
@@ -385,4 +351,4 @@ Este proyecto demuestra:
 
 ---
 
-**Desarrollado con ❤️ usando React.js, NestJS y N8N**
+**Desarrollado usando React.js, NestJS y N8N**

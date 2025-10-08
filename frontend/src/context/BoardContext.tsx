@@ -7,9 +7,12 @@ import {
   useCallback,
   ReactNode,
   useRef,
+  useMemo,
 } from "react";
 import { boardAPI, cardAPI, columnAPI } from "../services/api";
 import websocketService, { WS_SERVER_EVENTS } from "../services/websocket";
+import { generateTempId, getColumnId } from "../utils/helpers";
+import { NOTIFICATION_CONFIG, SUCCESS_MESSAGES } from "../utils/constants";
 import toast from "react-hot-toast";
 import type {
   IBoard,
@@ -67,19 +70,6 @@ interface BoardProviderProps {
   children: ReactNode;
 }
 
-/**
- * Función helper para extraer el ID de columna.
- *
- * Maneja tanto strings como ObjectId que vienen del backend.
- * Esto es necesario porque el backend puede devolver columnId como ObjectId
- * pero el frontend siempre espera strings.
- */
-const getColumnId = (
-  columnId: string | { _id: string; title: string }
-): string => {
-  return typeof columnId === "string" ? columnId : columnId._id;
-};
-
 export const BoardProvider = ({ children }: BoardProviderProps) => {
   const [boards, setBoards] = useState<IBoard[]>([]);
   const [currentBoard, setCurrentBoard] = useState<IBoardWithData | null>(null);
@@ -88,10 +78,132 @@ export const BoardProvider = ({ children }: BoardProviderProps) => {
   const currentBoardIdRef = useRef<string | null>(null);
   const recentlyCreatedCards = useRef<Set<string>>(new Set());
 
+  // Funciones de notificación memoizadas para evitar recreaciones constantes
+  const notifications = useMemo(
+    () => ({
+      showSuccess: (message: string) => {
+        toast.success(message, {
+          duration: NOTIFICATION_CONFIG.DURATION.SUCCESS,
+        });
+      },
+      showError: (message: string) => {
+        toast.error(message, {
+          duration: NOTIFICATION_CONFIG.DURATION.ERROR,
+        });
+      },
+      boardCreated: () => {
+        toast.success(SUCCESS_MESSAGES.BOARD_CREATED, {
+          duration: NOTIFICATION_CONFIG.DURATION.SUCCESS,
+        });
+      },
+      boardUpdated: () => {
+        toast.success(SUCCESS_MESSAGES.BOARD_UPDATED, {
+          duration: NOTIFICATION_CONFIG.DURATION.SUCCESS,
+        });
+      },
+      boardDeleted: () => {
+        toast.success(SUCCESS_MESSAGES.BOARD_DELETED, {
+          duration: NOTIFICATION_CONFIG.DURATION.SUCCESS,
+        });
+      },
+      columnCreated: () => {
+        toast.success(SUCCESS_MESSAGES.COLUMN_CREATED, {
+          duration: NOTIFICATION_CONFIG.DURATION.SUCCESS,
+        });
+      },
+      columnUpdated: () => {
+        toast.success(SUCCESS_MESSAGES.COLUMN_UPDATED, {
+          duration: NOTIFICATION_CONFIG.DURATION.SUCCESS,
+        });
+      },
+      columnDeleted: () => {
+        toast.success(SUCCESS_MESSAGES.COLUMN_DELETED, {
+          duration: NOTIFICATION_CONFIG.DURATION.SUCCESS,
+        });
+      },
+      cardCreated: () => {
+        toast.success(SUCCESS_MESSAGES.CARD_CREATED, {
+          duration: NOTIFICATION_CONFIG.DURATION.SUCCESS,
+        });
+      },
+      cardUpdated: () => {
+        toast.success(SUCCESS_MESSAGES.CARD_UPDATED, {
+          duration: NOTIFICATION_CONFIG.DURATION.SUCCESS,
+        });
+      },
+      cardDeleted: () => {
+        toast.success(SUCCESS_MESSAGES.CARD_DELETED, {
+          duration: NOTIFICATION_CONFIG.DURATION.SUCCESS,
+        });
+      },
+      cardMoved: () => {
+        toast.success(SUCCESS_MESSAGES.CARD_MOVED, {
+          duration: NOTIFICATION_CONFIG.DURATION.SUCCESS,
+        });
+      },
+      userConnected: (totalUsers: number) => {
+        toast.success(`📡 Usuario conectado (${totalUsers} online)`, {
+          duration: NOTIFICATION_CONFIG.DURATION.USER_CONNECTED,
+        });
+      },
+      exportRequested: () => {
+        toast.success(SUCCESS_MESSAGES.EXPORT_REQUESTED, {
+          duration: NOTIFICATION_CONFIG.DURATION.EXPORT,
+        });
+      },
+      exportError: () => {
+        toast.error("❌ Error al exportar. Por favor, inténtalo de nuevo.", {
+          duration: NOTIFICATION_CONFIG.DURATION.ERROR,
+        });
+      },
+      columnDeletedByOther: () => {
+        toast.success("🗑️ Columna eliminada por otro usuario", {
+          duration: NOTIFICATION_CONFIG.DURATION.SUCCESS,
+        });
+      },
+      cardCreatedByOther: () => {
+        toast.success("📝 Nueva tarjeta creada por otro usuario", {
+          duration: NOTIFICATION_CONFIG.DURATION.SUCCESS,
+        });
+      },
+      cardUpdatedByOther: () => {
+        toast.success("✏️ Tarjeta actualizada por otro usuario", {
+          duration: NOTIFICATION_CONFIG.DURATION.SUCCESS,
+        });
+      },
+      cardDeletedByOther: () => {
+        toast.success("🗑️ Tarjeta eliminada por otro usuario", {
+          duration: NOTIFICATION_CONFIG.DURATION.SUCCESS,
+        });
+      },
+      cardMovedByOther: () => {
+        toast.success("↔️ Tarjeta movida por otro usuario", {
+          duration: NOTIFICATION_CONFIG.DURATION.SUCCESS,
+        });
+      },
+      columnCreatedByOther: () => {
+        toast.success("➕ Nueva columna creada", {
+          duration: NOTIFICATION_CONFIG.DURATION.SUCCESS,
+        });
+      },
+      boardUpdatedByOther: () => {
+        toast.success("✏️ Tablero actualizado por otro usuario", {
+          duration: NOTIFICATION_CONFIG.DURATION.SUCCESS,
+        });
+      },
+      columnUpdatedByOther: () => {
+        toast.success("✏️ Columna actualizada por otro usuario", {
+          duration: NOTIFICATION_CONFIG.DURATION.SUCCESS,
+        });
+      },
+    }),
+    []
+  );
+
   /**
    * Emite eventos para sincronizar entre pestañas usando localStorage.
    *
-   * Cuando una pestaña hace un cambio, emite un evento que otras pestañas
+   * Cuando una pestaña realiza un cambio, emite un evento que otras pestañas
    * pueden escuchar para actualizar su estado local.
    */
   const emitTabEvent = useCallback((event: string, payload: unknown) => {
@@ -105,7 +217,7 @@ export const BoardProvider = ({ children }: BoardProviderProps) => {
     }
   }, []);
 
-  // Mantenemos referencia al boardId actual para usar en los listeners
+  // Mantenemos referencia al ID del tablero actual para usar en los listeners
   useEffect(() => {
     currentBoardIdRef.current = currentBoard?._id ?? null;
   }, [currentBoard]);
@@ -119,32 +231,35 @@ export const BoardProvider = ({ children }: BoardProviderProps) => {
       const response = await boardAPI.getAll();
       setBoards(response.data);
     } catch (error) {
-      toast.error("Error cargando tableros");
+      notifications.showError("Error cargando tableros");
       console.error("Error fetching boards:", error);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [notifications]);
 
   /**
    * Obtiene un tablero completo con todas sus columnas y tarjetas.
-   * También se une al tablero via WebSocket para recibir actualizaciones en tiempo real.
+   * También se une al tablero vía WebSocket para recibir actualizaciones en tiempo real.
    */
-  const fetchBoardWithData = useCallback(async (boardId: string) => {
-    try {
-      setLoading(true);
-      const response = await boardAPI.getFull(boardId);
-      setCurrentBoard(response.data);
+  const fetchBoardWithData = useCallback(
+    async (boardId: string) => {
+      try {
+        setLoading(true);
+        const response = await boardAPI.getFull(boardId);
+        setCurrentBoard(response.data);
 
-      // Nos unimos al tablero via WebSocket para recibir actualizaciones
-      websocketService.joinBoard(boardId);
-    } catch (error) {
-      toast.error("Error cargando tablero");
-      console.error("Error fetching board:", error);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+        // Nos unimos al tablero vía WebSocket para recibir actualizaciones
+        websocketService.joinBoard(boardId);
+      } catch (error) {
+        notifications.showError("Error cargando tablero");
+        console.error("Error fetching board:", error);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [notifications]
+  );
 
   /**
    * Crea un nuevo tablero.
@@ -154,15 +269,15 @@ export const BoardProvider = ({ children }: BoardProviderProps) => {
       try {
         const response = await boardAPI.create(data);
         setBoards((prev) => [...prev, response.data]);
-        toast.success("Tablero creado exitosamente");
+        notifications.boardCreated();
         return response.data;
       } catch (error) {
-        toast.error("Error creando tablero");
+        notifications.showError("Error creando tablero");
         console.error("Error creating board:", error);
         throw error;
       }
     },
-    []
+    [notifications]
   );
 
   /**
@@ -199,14 +314,14 @@ export const BoardProvider = ({ children }: BoardProviderProps) => {
           });
         }
 
-        toast.success("Tablero actualizado exitosamente");
+        notifications.boardUpdated();
       } catch (error) {
-        toast.error("Error actualizando tablero");
+        notifications.showError("Error actualizando tablero");
         console.error("Error updating board:", error);
         throw error;
       }
     },
-    [currentBoard, setCurrentBoard]
+    [currentBoard, setCurrentBoard, notifications]
   );
 
   /**
@@ -230,16 +345,16 @@ export const BoardProvider = ({ children }: BoardProviderProps) => {
           );
         }
 
-        toast.success("Columna creada");
+        notifications.columnCreated();
         // Sincronizamos con otras pestañas
         emitTabEvent("column:created", response.data);
       } catch (error) {
-        toast.error("Error creando columna");
+        notifications.showError("Error creando columna");
         console.error("Error creando columna:", error);
         throw error;
       }
     },
-    [currentBoard, emitTabEvent]
+    [currentBoard, emitTabEvent, notifications]
   );
 
   /**
@@ -273,29 +388,38 @@ export const BoardProvider = ({ children }: BoardProviderProps) => {
           });
         }
 
-        toast.success("Columna actualizada exitosamente");
+        notifications.columnUpdated();
       } catch (error) {
-        toast.error("Error actualizando columna");
+        notifications.showError("Error actualizando columna");
         console.error("Error updating column:", error);
         throw error;
       }
     },
-    [currentBoard]
+    [currentBoard, notifications]
   );
 
   /**
    * Crea una nueva tarjeta con actualización optimista.
    *
-   * Primero muestra la tarjeta temporalmente en la UI, luego la crea en el backend
-   * y reemplaza la temporal con la real. Esto da una sensación de respuesta inmediata.
+   * Esta función implementa un patrón de actualización optimista que mejora la
+   * experiencia del usuario al mostrar cambios inmediatamente en la UI antes de
+   * que el servidor confirme la operación.
+   *
+   * Flujo:
+   * 1. Genera un ID temporal único para la tarjeta
+   * 2. Actualiza inmediatamente el estado local (UI)
+   * 3. Envía la petición al backend
+   * 4. Reemplaza la tarjeta temporal con la real cuando llega la respuesta
+   * 5. Sincroniza con otras pestañas via localStorage
+   *
+   * @param data - Datos de la tarjeta a crear
+   * @throws Error si falla la creación en el backend
    */
   const createCard = useCallback(
     async (data: CreateCardDto) => {
       try {
         // Generamos un ID temporal para la actualización optimista
-        const tempId = `temp_${Date.now()}_${Math.random()
-          .toString(36)
-          .substr(2, 9)}`;
+        const tempId = generateTempId();
         const tempCard: ICard = {
           ...data,
           _id: tempId,
@@ -349,14 +473,14 @@ export const BoardProvider = ({ children }: BoardProviderProps) => {
           recentlyCreatedCards.current.delete(tempId);
         }, 10000);
 
-        toast.success("Tarjeta creada");
+        notifications.cardCreated();
       } catch (error) {
-        toast.error("Error creando tarjeta");
+        notifications.showError("Error creando tarjeta");
         console.error("Error creando tarjeta:", error);
         throw error;
       }
     },
-    [emitTabEvent]
+    [emitTabEvent, notifications]
   );
 
   /**
@@ -385,17 +509,17 @@ export const BoardProvider = ({ children }: BoardProviderProps) => {
           );
         }
 
-        // Notificamos a otros usuarios via WebSocket
+        // Notificamos a otros usuarios vía WebSocket
         websocketService.updateCard(id, updates);
 
-        toast.success("Tarjeta actualizada");
+        notifications.cardUpdated();
       } catch (error) {
-        toast.error("Error actualizando tarjeta");
+        notifications.showError("Error actualizando tarjeta");
         console.error("Error actualizando tarjeta:", error);
         throw error;
       }
     },
-    [currentBoard]
+    [currentBoard, notifications]
   );
 
   /**
@@ -422,20 +546,20 @@ export const BoardProvider = ({ children }: BoardProviderProps) => {
           );
         }
 
-        // Notificamos a otros usuarios via WebSocket
+        // Notificamos a otros usuarios vía WebSocket
         websocketService.deleteCard(id);
 
         // Sincronizamos con otras pestañas
         emitTabEvent("card:deleted", { id });
 
-        toast.success("Tarjeta eliminada");
+        notifications.cardDeleted();
       } catch (error) {
-        toast.error("Error eliminando tarjeta");
+        notifications.showError("Error eliminando tarjeta");
         console.error("Error eliminando tarjeta:", error);
         throw error;
       }
     },
-    [currentBoard, emitTabEvent]
+    [currentBoard, emitTabEvent, notifications]
   );
 
   /**
@@ -456,16 +580,16 @@ export const BoardProvider = ({ children }: BoardProviderProps) => {
           };
         });
 
-        toast.success("Columna eliminada");
+        notifications.columnDeleted();
         // Sincronizamos con otras pestañas
         emitTabEvent("column:deleted", { id });
       } catch (error) {
-        toast.error("Error eliminando columna");
+        notifications.showError("Error eliminando columna");
         console.error("Error eliminando columna:", error);
         throw error;
       }
     },
-    [emitTabEvent]
+    [emitTabEvent, notifications]
   );
 
   /**
@@ -480,23 +604,33 @@ export const BoardProvider = ({ children }: BoardProviderProps) => {
         if (currentBoard?._id === id) {
           setCurrentBoard(null);
         }
-        toast.success("Tablero eliminado");
+        notifications.boardDeleted();
         // Sincronizamos con otras pestañas
         emitTabEvent("board:deleted", { id });
       } catch (error) {
-        toast.error("Error eliminando tablero");
+        notifications.showError("Error eliminando tablero");
         console.error("Error eliminando tablero:", error);
         throw error;
       }
     },
-    [currentBoard, emitTabEvent]
+    [currentBoard, emitTabEvent, notifications]
   );
 
   /**
    * Mueve una tarjeta de una posición a otra con actualización optimista.
    *
-   * Primero actualiza la UI inmediatamente, luego sincroniza con el backend.
-   * No mueve tarjetas temporales (que empiezan con 'temp_').
+   * Esta función maneja el drag & drop de tarjetas entre columnas con una
+   * estrategia de actualización optimista para una experiencia fluida.
+   *
+   * Características:
+   * - Actualización inmediata de la UI (optimista)
+   * - Validación de posiciones y columnas
+   * - Ajuste automático de índices para la misma columna
+   * - Sincronización via WebSocket con otros usuarios
+   * - No mueve tarjetas temporales (prefijo 'temp_')
+   *
+   * @param moveData - Datos del movimiento incluyendo columnas y posiciones
+   * @throws Error si falla la sincronización con el backend
    */
   const moveCard = useCallback(
     async (moveData: MoveCardDto) => {
@@ -554,11 +688,11 @@ export const BoardProvider = ({ children }: BoardProviderProps) => {
           fetchBoardWithData(currentBoard._id);
         }
         console.error("Error moviendo tarjeta:", error);
-        toast.error("Error moviendo tarjeta");
+        notifications.showError("Error moviendo tarjeta");
         throw error;
       }
     },
-    [currentBoard, fetchBoardWithData]
+    [currentBoard, fetchBoardWithData, notifications]
   );
 
   /**
@@ -615,7 +749,7 @@ export const BoardProvider = ({ children }: BoardProviderProps) => {
               columns: prev.columns.filter((c) => c._id !== id),
             };
           });
-          toast.success("Columna eliminada por otro usuario", { icon: "🗑️" });
+          notifications.columnDeletedByOther();
         } else if (event === "card:updated") {
           // Actualizamos la tarjeta en el estado local
           const { id, updates } = payload as {
@@ -647,7 +781,7 @@ export const BoardProvider = ({ children }: BoardProviderProps) => {
               }),
             };
           });
-          toast.success("Nueva tarjeta creada en otra pestaña", { icon: "📝" });
+          notifications.cardCreatedByOther();
         } else if (event === "card:moved") {
           const boardId = currentBoardIdRef.current;
           if (boardId) {
@@ -661,12 +795,8 @@ export const BoardProvider = ({ children }: BoardProviderProps) => {
     window.addEventListener("storage", handleStorage);
     // Listener: Usuario conectado
     const handleUserConnected = (data: UserConnectionData) => {
-      console.log("WebSocket: User connected", data);
       setConnectedUsers(data.totalUsers);
-      toast.success(`Usuario conectado (${data.totalUsers} online)`, {
-        duration: 2000,
-        icon: "👋",
-      });
+      notifications.userConnected(data.totalUsers);
     };
 
     // Listener: Usuario desconectado
@@ -676,15 +806,12 @@ export const BoardProvider = ({ children }: BoardProviderProps) => {
 
     // Listener: Tarjeta creada por otro usuario
     const handleCardCreated = (card: ICard) => {
-      console.log("WebSocket: Card created event received", card);
-
       setCurrentBoard((prev) => {
         if (!prev) return prev;
 
         // Verificar que la columna existe en el board actual
         const column = prev.columns.find((col) => col._id === card.columnId);
         if (!column) {
-          console.log("Column not found in current board, ignoring card");
           return prev;
         }
 
@@ -703,7 +830,6 @@ export const BoardProvider = ({ children }: BoardProviderProps) => {
 
             if (tempCardIndex !== -1) {
               // Reemplazar tarjeta temporal con la real
-              console.log("Replacing temp card with real card", card._id);
               const newCards = [...col.cards];
               newCards[tempCardIndex] = card;
               return { ...col, cards: newCards };
@@ -712,11 +838,9 @@ export const BoardProvider = ({ children }: BoardProviderProps) => {
             // Si no hay tarjeta temporal, verificar si ya existe la real
             const exists = col.cards.some((c) => c._id === card._id);
             if (exists) {
-              console.log("Card already exists, skipping");
               return col;
             }
 
-            console.log("Adding card to column", col._id);
             return { ...col, cards: [...col.cards, card] };
           }),
         };
@@ -724,7 +848,7 @@ export const BoardProvider = ({ children }: BoardProviderProps) => {
 
       // Solo mostrar toast si no es una tarjeta recién creada por esta pestaña
       if (!recentlyCreatedCards.current.has(card._id)) {
-        toast.success("Nueva tarjeta creada por otro usuario", { icon: "📝" });
+        notifications.cardCreatedByOther();
       }
     };
 
@@ -742,7 +866,7 @@ export const BoardProvider = ({ children }: BoardProviderProps) => {
           })),
         };
       });
-      toast.success("Tarjeta actualizada por otro usuario", { icon: "✏️" });
+      notifications.cardUpdatedByOther();
     };
 
     // Listener: Tarjeta eliminada por otro usuario
@@ -757,25 +881,17 @@ export const BoardProvider = ({ children }: BoardProviderProps) => {
           })),
         };
       });
-      toast.success("Tarjeta eliminada por otro usuario", { icon: "🗑️" });
+      notifications.cardDeletedByOther();
     };
 
     // Listener: Tarjeta movida por otro usuario
     const handleCardMoved = ({ moveData }: { moveData: MoveCardDto }) => {
-      console.log("WebSocket: Card moved event received", moveData);
-
       setCurrentBoard((prev) => {
         if (!prev) return prev;
 
         const { sourceColumnId, destinationColumnId, sourcePosition, cardId } =
           moveData;
         let { destinationPosition } = moveData;
-
-        console.log("Moving card:", {
-          cardId,
-          from: { column: sourceColumnId, position: sourcePosition },
-          to: { column: destinationColumnId, position: destinationPosition },
-        });
 
         // Crear copias profundas de las columnas
         const nextColumns = prev.columns.map((col) => ({
@@ -787,7 +903,6 @@ export const BoardProvider = ({ children }: BoardProviderProps) => {
         const destCol = nextColumns.find((c) => c._id === destinationColumnId);
 
         if (!sourceCol || !destCol) {
-          console.log("Source or destination column not found");
           return prev;
         }
 
@@ -796,15 +911,12 @@ export const BoardProvider = ({ children }: BoardProviderProps) => {
         if (moved) {
           // Remover por ID
           sourceCol.cards = sourceCol.cards.filter((c) => c._id !== cardId);
-          console.log("Removed card by ID:", moved._id);
         } else {
           // Fallback: remover por posición
           moved = sourceCol.cards.splice(sourcePosition, 1)[0];
-          console.log("Removed card by position:", moved?._id);
         }
 
         if (!moved) {
-          console.log("Card not found to move");
           return prev;
         }
 
@@ -826,11 +938,10 @@ export const BoardProvider = ({ children }: BoardProviderProps) => {
           columnId: destinationColumnId,
         });
 
-        console.log("Card moved successfully to position:", insertIndex);
         return { ...prev, columns: nextColumns };
       });
 
-      toast.success("Tarjeta movida por otro usuario", { icon: "↔️" });
+      notifications.cardMovedByOther();
     };
 
     // Listener: Columna creada
@@ -843,7 +954,7 @@ export const BoardProvider = ({ children }: BoardProviderProps) => {
           columns: [...prev.columns, { ...column, cards: [] }],
         };
       });
-      toast.success("Nueva columna creada", { icon: "➕" });
+      notifications.columnCreatedByOther();
     };
 
     // Listener: Tablero actualizado por otro usuario
@@ -852,8 +963,6 @@ export const BoardProvider = ({ children }: BoardProviderProps) => {
       title: string;
       description?: string;
     }) => {
-      console.log("WebSocket: Recibida actualización de tablero", board);
-
       // Actualizar en la lista de tableros
       setBoards((prev) =>
         prev.map((b) =>
@@ -873,7 +982,7 @@ export const BoardProvider = ({ children }: BoardProviderProps) => {
         };
       });
 
-      toast.success("Tablero actualizado por otro usuario", { icon: "✏️" });
+      notifications.boardUpdatedByOther();
     };
 
     // Listener: Columna actualizada por otro usuario
@@ -882,8 +991,6 @@ export const BoardProvider = ({ children }: BoardProviderProps) => {
       title: string;
       boardId: string;
     }) => {
-      console.log("WebSocket: Recibida actualización de columna", column);
-
       // Actualizar el tablero actual si es el que estamos viendo
       setCurrentBoard((prev) => {
         if (!prev || prev._id !== column.boardId) return prev;
@@ -895,7 +1002,7 @@ export const BoardProvider = ({ children }: BoardProviderProps) => {
         };
       });
 
-      toast.success("Columna actualizada por otro usuario", { icon: "✏️" });
+      notifications.columnUpdatedByOther();
     };
 
     // Registrar listeners
@@ -935,27 +1042,48 @@ export const BoardProvider = ({ children }: BoardProviderProps) => {
       websocketService.removeAllListeners(WS_SERVER_EVENTS.COLUMN_UPDATED);
       websocketService.removeAllListeners(WS_SERVER_EVENTS.COLUMN_DELETED);
     };
-  }, [fetchBoardWithData]);
+  }, [fetchBoardWithData, notifications]);
 
-  const value: BoardContextType = {
-    boards,
-    currentBoard,
-    loading,
-    connectedUsers,
-    fetchBoards,
-    fetchBoardWithData,
-    createBoard,
-    updateBoard,
-    createColumn,
-    updateColumn,
-    createCard,
-    updateCard,
-    deleteCard,
-    deleteColumn,
-    deleteBoard,
-    moveCard,
-    setCurrentBoard,
-  };
+  const value: BoardContextType = useMemo(
+    () => ({
+      boards,
+      currentBoard,
+      loading,
+      connectedUsers,
+      fetchBoards,
+      fetchBoardWithData,
+      createBoard,
+      updateBoard,
+      createColumn,
+      updateColumn,
+      createCard,
+      updateCard,
+      deleteCard,
+      deleteColumn,
+      deleteBoard,
+      moveCard,
+      setCurrentBoard,
+    }),
+    [
+      boards,
+      currentBoard,
+      loading,
+      connectedUsers,
+      fetchBoards,
+      fetchBoardWithData,
+      createBoard,
+      updateBoard,
+      createColumn,
+      updateColumn,
+      createCard,
+      updateCard,
+      deleteCard,
+      deleteColumn,
+      deleteBoard,
+      moveCard,
+      setCurrentBoard,
+    ]
+  );
 
   return (
     <BoardContext.Provider value={value}>{children}</BoardContext.Provider>

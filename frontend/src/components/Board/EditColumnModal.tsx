@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { X } from "lucide-react";
 import { useBoardContext } from "../../context/BoardContext";
+import toast from "react-hot-toast";
 import type { IColumn } from "../../types";
 
 interface EditColumnModalProps {
@@ -21,7 +22,7 @@ const EditColumnModal = ({ column, onClose }: EditColumnModalProps) => {
     e.preventDefault();
 
     if (!title.trim()) {
-      alert("El título es obligatorio");
+      toast.error("El título es obligatorio");
       return;
     }
 
@@ -32,8 +33,8 @@ const EditColumnModal = ({ column, onClose }: EditColumnModalProps) => {
       });
       onClose();
     } catch (error) {
-      console.error("Error updating column:", error);
-      alert("Error al actualizar la columna");
+      console.error("Error actualizando columna:", error);
+      toast.error("Error al actualizar la columna");
     } finally {
       setLoading(false);
     }

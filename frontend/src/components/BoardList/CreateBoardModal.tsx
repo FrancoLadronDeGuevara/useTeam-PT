@@ -23,7 +23,7 @@ const CreateBoardModal = ({ onClose }: CreateBoardModalProps) => {
       await createBoard(formData);
       onClose();
     } catch (error) {
-      console.error("Error creating board:", error);
+      console.error("Error creando tablero:", error);
     } finally {
       setIsSubmitting(false);
     }
@@ -35,7 +35,7 @@ const CreateBoardModal = ({ onClose }: CreateBoardModalProps) => {
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold text-slate-900">
-            Create New Board
+            Crear Nuevo Tablero
           </h2>
           <button
             onClick={onClose}
@@ -51,7 +51,7 @@ const CreateBoardModal = ({ onClose }: CreateBoardModalProps) => {
             {/* Title */}
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">
-                Board Title *
+                Título del Tablero *
               </label>
               <input
                 type="text"
@@ -59,7 +59,7 @@ const CreateBoardModal = ({ onClose }: CreateBoardModalProps) => {
                 onChange={(e) =>
                   setFormData({ ...formData, title: e.target.value })
                 }
-                placeholder="e.g., Sprint Planning, Q1 Goals"
+                placeholder="ej., Planificación de Sprint, Objetivos Q1"
                 className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                 required
                 autoFocus
@@ -69,14 +69,14 @@ const CreateBoardModal = ({ onClose }: CreateBoardModalProps) => {
             {/* Description */}
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">
-                Description (Optional)
+                Descripción (Opcional)
               </label>
               <textarea
                 value={formData.description}
                 onChange={(e) =>
                   setFormData({ ...formData, description: e.target.value })
                 }
-                placeholder="Brief description of this board..."
+                placeholder="Breve descripción de este tablero..."
                 rows={3}
                 className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-none"
               />
@@ -90,14 +90,14 @@ const CreateBoardModal = ({ onClose }: CreateBoardModalProps) => {
               onClick={onClose}
               className="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors"
             >
-              Cancel
+              Cancelar
             </button>
             <button
               type="submit"
               disabled={!formData.title.trim() || isSubmitting}
               className="flex-1 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isSubmitting ? "Creating..." : "Create Board"}
+              {isSubmitting ? "Creando..." : "Crear Tablero"}
             </button>
           </div>
         </form>

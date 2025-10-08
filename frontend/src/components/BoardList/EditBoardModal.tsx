@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { X } from "lucide-react";
 import { useBoardContext } from "../../context/BoardContext";
+import toast from "react-hot-toast";
 import type { IBoard } from "../../types";
 
 interface EditBoardModalProps {
@@ -23,7 +24,7 @@ const EditBoardModal = ({ board, onClose }: EditBoardModalProps) => {
     e.preventDefault();
 
     if (!title.trim()) {
-      alert("El título es obligatorio");
+      toast.error("El título es obligatorio");
       return;
     }
 
@@ -35,8 +36,8 @@ const EditBoardModal = ({ board, onClose }: EditBoardModalProps) => {
       });
       onClose();
     } catch (error) {
-      console.error("Error updating board:", error);
-      alert("Error al actualizar el tablero");
+      console.error("Error actualizando tablero:", error);
+      toast.error("Error al actualizar el tablero");
     } finally {
       setLoading(false);
     }

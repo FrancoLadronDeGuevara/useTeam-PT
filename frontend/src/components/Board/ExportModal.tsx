@@ -1,6 +1,8 @@
 import { useState, FormEvent } from "react";
 import { X, Mail } from "lucide-react";
 import { exportAPI } from "../../services/api";
+import { isValidEmail } from "../../utils/helpers";
+import { ERROR_MESSAGES } from "../../utils/constants";
 import toast from "react-hot-toast";
 
 interface ExportModalProps {
@@ -16,6 +18,11 @@ const ExportModal = ({ boardId, onClose }: ExportModalProps) => {
     e.preventDefault();
     if (!email.trim()) return;
 
+    if (!isValidEmail(email)) {
+      toast.error(ERROR_MESSAGES.VALIDATION_ERROR);
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       await exportAPI.backlog({
@@ -24,14 +31,18 @@ const ExportModal = ({ boardId, onClose }: ExportModalProps) => {
         fields: ["id", "title", "description", "column", "createdAt"],
       });
 
-      toast.success("Export request sent! Check your email shortly.", {
-        duration: 5000,
-        icon: "📧",
-      });
+      toast.success(
+        "📧 Solicitud de exportación enviada! Revisa tu email en breve.",
+        {
+          duration: 5000,
+        }
+      );
       onClose();
     } catch (error) {
-      console.error("Error exporting backlog:", error);
-      toast.error("Failed to export backlog. Please try again.");
+      console.error("Error exportando backlog:", error);
+      toast.error("❌ Error al exportar. Por favor, inténtalo de nuevo.", {
+        duration: 4000,
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -44,7 +55,7 @@ const ExportModal = ({ boardId, onClose }: ExportModalProps) => {
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
             <Mail className="text-green-500" size={28} />
-            Export Backlog
+            Exportar Backlog
           </h2>
           <button
             onClick={onClose}
@@ -57,8 +68,8 @@ const ExportModal = ({ boardId, onClose }: ExportModalProps) => {
         {/* Description */}
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
           <p className="text-sm text-blue-900">
-            Export all tasks from this board as a CSV file. The file will be
-            sent to your email address.
+            Exporta todas las tareas de este tablero como un archivo CSV. El
+            archivo será enviado a tu dirección de correo electrónico.
           </p>
         </div>
 
@@ -66,20 +77,20 @@ const ExportModal = ({ boardId, onClose }: ExportModalProps) => {
         <form onSubmit={handleSubmit}>
           <div className="mb-6">
             <label className="block text-sm font-medium text-slate-700 mb-2">
-              Email Address *
+              Dirección de Correo *
             </label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="your.email@example.com"
+              placeholder="tu.email@ejemplo.com"
               className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
               required
               autoFocus
             />
             <p className="text-xs text-slate-500 mt-2">
-              You'll receive a CSV file with all tasks including: ID, Title,
-              Description, Column, and Created Date.
+              Recibirás un archivo CSV con todas las tareas incluyendo: ID,
+              Título, Descripción, Columna y Fecha de Creación.
             </p>
           </div>
 
@@ -90,14 +101,14 @@ const ExportModal = ({ boardId, onClose }: ExportModalProps) => {
               onClick={onClose}
               className="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors"
             >
-              Cancel
+              Cancelar
             </button>
             <button
               type="submit"
               disabled={!email.trim() || isSubmitting}
               className="flex-1 px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isSubmitting ? "Sending..." : "Send Export"}
+              {isSubmitting ? "Enviando..." : "Enviar Exportación"}
             </button>
           </div>
         </form>

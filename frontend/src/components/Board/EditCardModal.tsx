@@ -25,7 +25,7 @@ const EditCardModal = ({ card, onClose }: EditCardModalProps) => {
       await updateCard(card._id, formData);
       onClose();
     } catch (error) {
-      console.error("Error updating card:", error);
+      console.error("Error actualizando tarjeta:", error);
     } finally {
       setIsSubmitting(false);
     }
@@ -36,7 +36,7 @@ const EditCardModal = ({ card, onClose }: EditCardModalProps) => {
       <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-slate-900">Edit Card</h2>
+          <h2 className="text-2xl font-bold text-slate-900">Editar Tarjeta</h2>
           <button
             onClick={onClose}
             className="text-slate-400 hover:text-slate-600 transition-colors"
@@ -51,7 +51,7 @@ const EditCardModal = ({ card, onClose }: EditCardModalProps) => {
             {/* Title */}
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">
-                Card Title *
+                Título de la Tarjeta *
               </label>
               <input
                 type="text"
@@ -59,7 +59,7 @@ const EditCardModal = ({ card, onClose }: EditCardModalProps) => {
                 onChange={(e) =>
                   setFormData({ ...formData, title: e.target.value })
                 }
-                placeholder="e.g., Fix login bug"
+                placeholder="ej., Arreglar error de login"
                 className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                 required
                 autoFocus
@@ -69,14 +69,14 @@ const EditCardModal = ({ card, onClose }: EditCardModalProps) => {
             {/* Description */}
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">
-                Description
+                Descripción
               </label>
               <textarea
                 value={formData.description}
                 onChange={(e) =>
                   setFormData({ ...formData, description: e.target.value })
                 }
-                placeholder="Add more details..."
+                placeholder="Agregar más detalles..."
                 rows={4}
                 className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-none"
               />
@@ -90,14 +90,14 @@ const EditCardModal = ({ card, onClose }: EditCardModalProps) => {
               onClick={onClose}
               className="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors"
             >
-              Cancel
+              Cancelar
             </button>
             <button
               type="submit"
               disabled={!formData.title.trim() || isSubmitting}
               className="flex-1 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isSubmitting ? "Saving..." : "Save Changes"}
+              {isSubmitting ? "Guardando..." : "Guardar Cambios"}
             </button>
           </div>
         </form>
