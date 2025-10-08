@@ -51,7 +51,7 @@ Esta guía te ayudará a configurar completamente N8N para el sistema de exporta
 #### 1.1 Clonar el Repositorio
 
 ```bash
-git clone <tu-repositorio>
+git clone https://github.com/FrancoLadronDeGuevara/useTeam-PT.git
 cd useTeam-PT
 ```
 
@@ -159,43 +159,6 @@ n8n start
    Password: tu-app-password (16 caracteres)
    Security: STARTTLS
    ```
-
-#### 3.3 Configuración Alternativa (OAuth2)
-
-Para mayor seguridad, puedes usar OAuth2:
-
-1. Ve a [Google Cloud Console](https://console.cloud.google.com/)
-2. Crea un nuevo proyecto o selecciona uno existente
-3. Habilita **Gmail API**
-4. Crea credenciales OAuth2
-5. Configura en N8N usando OAuth2
-
-### Otros Proveedores SMTP
-
-#### Outlook/Hotmail
-
-```
-Host: smtp-mail.outlook.com
-Port: 587
-Security: STARTTLS
-```
-
-#### Yahoo Mail
-
-```
-Host: smtp.mail.yahoo.com
-Port: 587
-Security: STARTTLS
-```
-
-#### SendGrid (Recomendado para Producción)
-
-```
-Host: smtp.sendgrid.net
-Port: 587
-Username: apikey
-Password: tu-sendgrid-api-key
-```
 
 ---
 
@@ -314,10 +277,6 @@ N8N_HOST=0.0.0.0
 N8N_PORT=5678
 N8N_PROTOCOL=http
 N8N_EDITOR_BASE_URL=http://localhost:5678
-
-# Database (opcional)
-DB_TYPE=sqlite
-DB_SQLITE_DATABASE=/home/node/.n8n/database.sqlite
 
 # Security
 N8N_BASIC_AUTH_ACTIVE=true
