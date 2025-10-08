@@ -21,6 +21,12 @@ export class Card extends Document {
 
   @Prop({ required: true, default: 0, min: 0 })
   position: number;
+
+  @Prop({ default: '#ffffff', trim: true })
+  backgroundColor: string;
+
+  @Prop({ default: '#000000', trim: true })
+  textColor: string;
 }
 
 export const CardSchema = SchemaFactory.createForClass(Card);

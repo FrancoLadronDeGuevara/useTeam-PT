@@ -56,7 +56,7 @@ const KebabMenu = ({
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 top-8 z-50 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg shadow-lg py-1 min-w-[140px]">
+        <div className="absolute right-0 bottom-8 z-50 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg shadow-lg py-1 min-w-[140px]">
           <button
             onClick={handleEdit}
             className="w-full px-3 py-2 text-left text-xs text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors whitespace-nowrap"

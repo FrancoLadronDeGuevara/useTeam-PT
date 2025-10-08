@@ -43,7 +43,12 @@ interface BoardContextType {
   createBoard: (data: CreateBoardDto) => Promise<IBoard>;
   updateBoard: (
     id: string,
-    updates: { title: string; description?: string }
+    updates: {
+      title: string;
+      description?: string;
+      primaryColor?: string;
+      backgroundColor?: string;
+    }
   ) => Promise<void>;
   createColumn: (data: CreateColumnDto) => Promise<void>;
   updateColumn: (id: string, updates: { title: string }) => Promise<void>;
@@ -269,6 +274,10 @@ export const BoardProvider = ({ children }: BoardProviderProps) => {
       try {
         const response = await boardAPI.create(data);
         setBoards((prev) => [...prev, response.data]);
+
+        // Notificamos a otros usuarios vía WebSocket
+        websocketService.createBoard(response.data);
+
         notifications.boardCreated();
         return response.data;
       } catch (error) {
@@ -301,6 +310,8 @@ export const BoardProvider = ({ children }: BoardProviderProps) => {
             ...currentBoard,
             title: response.data.title,
             description: response.data.description,
+            primaryColor: response.data.primaryColor,
+            backgroundColor: response.data.backgroundColor,
           });
         }
 
@@ -425,6 +436,8 @@ export const BoardProvider = ({ children }: BoardProviderProps) => {
           _id: tempId,
           description: data.description || "",
           position: data.position || 0,
+          backgroundColor: data.backgroundColor || "#ffffff",
+          textColor: data.textColor || "#000000",
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         };
@@ -604,6 +617,9 @@ export const BoardProvider = ({ children }: BoardProviderProps) => {
         if (currentBoard?._id === id) {
           setCurrentBoard(null);
         }
+        // Notificamos a otros usuarios vía WebSocket
+        websocketService.deleteBoard(id);
+
         notifications.boardDeleted();
         // Sincronizamos con otras pestañas
         emitTabEvent("board:deleted", { id });
@@ -787,6 +803,22 @@ export const BoardProvider = ({ children }: BoardProviderProps) => {
           if (boardId) {
             fetchBoardWithData(boardId);
           }
+        } else if (event === "board:created") {
+          // Agregamos el tablero al estado local
+          const board = payload as IBoard;
+          setBoards((prev) => {
+            const exists = prev.some((b) => b._id === board._id);
+            return exists ? prev : [...prev, board];
+          });
+        } else if (event === "board:deleted") {
+          // Eliminamos el tablero del estado local
+          const { id } = payload as { id: string };
+          setBoards((prev) => prev.filter((b) => b._id !== id));
+
+          // Si es el tablero actual, deseleccionarlo
+          if (currentBoard?._id === id) {
+            setCurrentBoard(null);
+          }
         }
       } catch {
         /* ignore malformed storage payload */
@@ -962,12 +994,20 @@ export const BoardProvider = ({ children }: BoardProviderProps) => {
       id: string;
       title: string;
       description?: string;
+      primaryColor?: string;
+      backgroundColor?: string;
     }) => {
       // Actualizar en la lista de tableros
       setBoards((prev) =>
         prev.map((b) =>
           b._id === board.id
-            ? { ...b, title: board.title, description: board.description || "" }
+            ? {
+                ...b,
+                title: board.title,
+                description: board.description || "",
+                primaryColor: board.primaryColor,
+                backgroundColor: board.backgroundColor,
+              }
             : b
         )
       );
@@ -979,6 +1019,8 @@ export const BoardProvider = ({ children }: BoardProviderProps) => {
           ...prev,
           title: board.title,
           description: board.description || "",
+          primaryColor: board.primaryColor,
+          backgroundColor: board.backgroundColor,
         };
       });
 
@@ -1005,13 +1047,49 @@ export const BoardProvider = ({ children }: BoardProviderProps) => {
       notifications.columnUpdatedByOther();
     };
 
+    // Listener: Tablero creado por otro usuario
+    const handleBoardCreated = (board: IBoard) => {
+      // Agregar a la lista de tableros si no existe
+      setBoards((prev) => {
+        const exists = prev.some((b) => b._id === board._id);
+        if (!exists) {
+          // Solo mostrar notificación si el tablero no existe (fue creado por otro usuario)
+          notifications.boardCreated();
+          return [...prev, board];
+        }
+        return prev;
+      });
+    };
+
+    // Listener: Tablero eliminado por otro usuario
+    const handleBoardDeleted = ({ id }: { id: string }) => {
+      // Verificar si el tablero existe antes de eliminarlo
+      setBoards((prev) => {
+        const exists = prev.some((b) => b._id === id);
+        if (exists) {
+          // Solo mostrar notificación si el tablero existía (fue eliminado por otro usuario)
+          notifications.boardDeleted();
+
+          // Si es el tablero actual, deseleccionarlo
+          if (currentBoard?._id === id) {
+            setCurrentBoard(null);
+          }
+
+          return prev.filter((b) => b._id !== id);
+        }
+        return prev;
+      });
+    };
+
     // Registrar listeners
     websocketService.on(WS_SERVER_EVENTS.USER_CONNECTED, handleUserConnected);
     websocketService.on(
       WS_SERVER_EVENTS.USER_DISCONNECTED,
       handleUserDisconnected
     );
+    websocketService.on(WS_SERVER_EVENTS.BOARD_CREATED, handleBoardCreated);
     websocketService.on(WS_SERVER_EVENTS.BOARD_UPDATED, handleBoardUpdated);
+    websocketService.on(WS_SERVER_EVENTS.BOARD_DELETED, handleBoardDeleted);
     websocketService.on(WS_SERVER_EVENTS.CARD_CREATED, handleCardCreated);
     websocketService.on(WS_SERVER_EVENTS.CARD_UPDATED, handleCardUpdated);
     websocketService.on(WS_SERVER_EVENTS.CARD_DELETED, handleCardDeleted);
@@ -1033,7 +1111,9 @@ export const BoardProvider = ({ children }: BoardProviderProps) => {
       window.removeEventListener("storage", handleStorage);
       websocketService.removeAllListeners(WS_SERVER_EVENTS.USER_CONNECTED);
       websocketService.removeAllListeners(WS_SERVER_EVENTS.USER_DISCONNECTED);
+      websocketService.removeAllListeners(WS_SERVER_EVENTS.BOARD_CREATED);
       websocketService.removeAllListeners(WS_SERVER_EVENTS.BOARD_UPDATED);
+      websocketService.removeAllListeners(WS_SERVER_EVENTS.BOARD_DELETED);
       websocketService.removeAllListeners(WS_SERVER_EVENTS.CARD_CREATED);
       websocketService.removeAllListeners(WS_SERVER_EVENTS.CARD_UPDATED);
       websocketService.removeAllListeners(WS_SERVER_EVENTS.CARD_DELETED);

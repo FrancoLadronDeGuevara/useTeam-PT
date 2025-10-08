@@ -19,14 +19,9 @@ export const useModal = () => {
     setIsOpen(false);
   }, []);
 
-  const toggleModal = useCallback(() => {
-    setIsOpen((prev) => !prev);
-  }, []);
-
   return {
     isOpen,
     openModal,
     closeModal,
-    toggleModal,
   };
 };

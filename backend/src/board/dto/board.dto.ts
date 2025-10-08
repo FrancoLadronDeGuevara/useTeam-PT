@@ -1,4 +1,12 @@
-import { IsString, IsNotEmpty, IsOptional, IsMongoId, IsNumber, Min } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsMongoId,
+  IsNumber,
+  Min,
+  Matches,
+} from 'class-validator';
 
 export class CreateBoardDto {
   @IsString()
@@ -8,6 +16,16 @@ export class CreateBoardDto {
   @IsString()
   @IsOptional()
   description?: string;
+
+  @IsString()
+  @IsOptional()
+  @Matches(/^#[0-9A-Fa-f]{6}$/, { message: 'primaryColor must be a valid hex color' })
+  primaryColor?: string;
+
+  @IsString()
+  @IsOptional()
+  @Matches(/^#[0-9A-Fa-f]{6}$/, { message: 'backgroundColor must be a valid hex color' })
+  backgroundColor?: string;
 }
 
 export class UpdateBoardDto {
@@ -18,6 +36,16 @@ export class UpdateBoardDto {
   @IsString()
   @IsOptional()
   description?: string;
+
+  @IsString()
+  @IsOptional()
+  @Matches(/^#[0-9A-Fa-f]{6}$/, { message: 'primaryColor must be a valid hex color' })
+  primaryColor?: string;
+
+  @IsString()
+  @IsOptional()
+  @Matches(/^#[0-9A-Fa-f]{6}$/, { message: 'backgroundColor must be a valid hex color' })
+  backgroundColor?: string;
 }
 
 export class CreateColumnDto {
@@ -63,6 +91,16 @@ export class CreateCardDto {
   @IsOptional()
   @Min(0)
   position?: number;
+
+  @IsString()
+  @IsOptional()
+  @Matches(/^#[0-9A-Fa-f]{6}$/, { message: 'backgroundColor must be a valid hex color' })
+  backgroundColor?: string;
+
+  @IsString()
+  @IsOptional()
+  @Matches(/^#[0-9A-Fa-f]{6}$/, { message: 'textColor must be a valid hex color' })
+  textColor?: string;
 }
 
 export class UpdateCardDto {
@@ -73,6 +111,16 @@ export class UpdateCardDto {
   @IsString()
   @IsOptional()
   description?: string;
+
+  @IsString()
+  @IsOptional()
+  @Matches(/^#[0-9A-Fa-f]{6}$/, { message: 'backgroundColor must be a valid hex color' })
+  backgroundColor?: string;
+
+  @IsString()
+  @IsOptional()
+  @Matches(/^#[0-9A-Fa-f]{6}$/, { message: 'textColor must be a valid hex color' })
+  textColor?: string;
 }
 
 export class MoveCardDto {

@@ -54,47 +54,6 @@ export const isValidEmail = (email: string): boolean => {
 };
 
 /**
- * Función debounce para optimizar llamadas frecuentes.
- *
- * @param func - Función a aplicar debounce
- * @param delay - Retraso en milisegundos
- * @returns Función con debounce aplicado
- */
-export const debounce = <T extends (...args: any[]) => any>(
-  func: T,
-  delay: number
-): ((...args: Parameters<T>) => void) => {
-  let timeoutId: NodeJS.Timeout;
-
-  return (...args: Parameters<T>) => {
-    clearTimeout(timeoutId);
-    timeoutId = setTimeout(() => func(...args), delay);
-  };
-};
-
-/**
- * Función throttle para limitar la frecuencia de ejecución.
- *
- * @param func - Función a aplicar throttle
- * @param limit - Límite en milisegundos
- * @returns Función con throttle aplicado
- */
-export const throttle = <T extends (...args: any[]) => any>(
-  func: T,
-  limit: number
-): ((...args: Parameters<T>) => void) => {
-  let inThrottle: boolean;
-
-  return (...args: Parameters<T>) => {
-    if (!inThrottle) {
-      func(...args);
-      inThrottle = true;
-      setTimeout(() => (inThrottle = false), limit);
-    }
-  };
-};
-
-/**
  * Busca una tarjeta por su ID en todas las columnas de un tablero.
  *
  * @param board - Tablero con columnas y tarjetas
@@ -146,55 +105,4 @@ export const findColumnById = (
   if (!board) return undefined;
 
   return board.columns.find((col) => col._id === columnId);
-};
-
-/**
- * Clona un objeto de forma profunda.
- *
- * @param obj - Objeto a clonar
- * @returns Objeto clonado
- */
-export const deepClone = <T>(obj: T): T => {
-  if (obj === null || typeof obj !== "object") return obj;
-  if (obj instanceof Date) return new Date(obj.getTime()) as unknown as T;
-  if (obj instanceof Array)
-    return obj.map((item) => deepClone(item)) as unknown as T;
-  if (typeof obj === "object") {
-    const clonedObj = {} as T;
-    for (const key in obj) {
-      if (obj.hasOwnProperty(key)) {
-        clonedObj[key] = deepClone(obj[key]);
-      }
-    }
-    return clonedObj;
-  }
-  return obj;
-};
-
-/**
- * Genera un color aleatorio para avatares o elementos visuales.
- *
- * @returns Color hexadecimal
- */
-export const generateRandomColor = (): string => {
-  const colors = [
-    "#ef4444",
-    "#f97316",
-    "#f59e0b",
-    "#eab308",
-    "#84cc16",
-    "#22c55e",
-    "#10b981",
-    "#14b8a6",
-    "#06b6d4",
-    "#0ea5e9",
-    "#3b82f6",
-    "#6366f1",
-    "#8b5cf6",
-    "#a855f7",
-    "#d946ef",
-    "#ec4899",
-    "#f43f5e",
-  ];
-  return colors[Math.floor(Math.random() * colors.length)];
 };

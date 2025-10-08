@@ -88,37 +88,68 @@ const BoardList = ({ onSelectBoard }: BoardListProps) => {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {boards.map((board) => (
-            <div
-              key={board._id}
-              className="bg-white dark:bg-slate-800 rounded-xl shadow-sm hover:shadow-md dark:shadow-slate-900/20 dark:hover:shadow-slate-900/30 transition-all border border-slate-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-600 p-6 group relative"
-            >
-              <div className="flex items-start justify-between mb-3">
-                <h3
-                  onClick={() => onSelectBoard(board._id)}
-                  className="text-xl font-bold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors cursor-pointer flex-1 pr-2"
+          {boards.map((board) => {
+            // Estilos dinámicos basados en los colores del tablero
+            const boardStyle = {
+              backgroundColor: board.backgroundColor || "#ffffff",
+              borderColor: board.primaryColor || "#3b82f6",
+            };
+
+            const isCustomColors =
+              board.backgroundColor && board.backgroundColor !== "#ffffff";
+            const darkModeClasses = !isCustomColors
+              ? "dark:bg-slate-800 dark:shadow-slate-900/20 dark:hover:shadow-slate-900/30 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-600"
+              : "hover:shadow-lg";
+
+            return (
+              <div
+                key={board._id}
+                style={boardStyle}
+                className={`rounded-xl shadow-sm hover:shadow-md transition-all border-2 p-6 group relative ${darkModeClasses}`}
+              >
+                <div className="flex items-start justify-between mb-3">
+                  <h3
+                    onClick={() => onSelectBoard(board._id)}
+                    className={`text-xl font-bold transition-colors cursor-pointer flex-1 pr-2 ${
+                      isCustomColors
+                        ? "text-slate-900 hover:text-slate-700"
+                        : "text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400"
+                    }`}
+                  >
+                    {board.title}
+                  </h3>
+                  <KebabMenu
+                    onEdit={() => handleEditBoard(board)}
+                    onDelete={() => handleDeleteBoard(board._id)}
+                    editLabel="Editar tablero"
+                    deleteLabel="Eliminar tablero"
+                  />
+                </div>
+
+                {board.description && (
+                  <p
+                    className={`text-sm line-clamp-2 mb-4 ${
+                      isCustomColors
+                        ? "text-slate-700 opacity-80"
+                        : "text-slate-600 dark:text-slate-300"
+                    }`}
+                  >
+                    {board.description}
+                  </p>
+                )}
+
+                <div
+                  className={`text-xs ${
+                    isCustomColors
+                      ? "text-slate-600 opacity-60"
+                      : "text-slate-500 dark:text-slate-400"
+                  }`}
                 >
-                  {board.title}
-                </h3>
-                <KebabMenu
-                  onEdit={() => handleEditBoard(board)}
-                  onDelete={() => handleDeleteBoard(board._id)}
-                  editLabel="Editar tablero"
-                  deleteLabel="Eliminar tablero"
-                />
+                  Creado {formatDate(board.createdAt)}
+                </div>
               </div>
-
-              {board.description && (
-                <p className="text-slate-600 dark:text-slate-300 text-sm line-clamp-2 mb-4">
-                  {board.description}
-                </p>
-              )}
-
-              <div className="text-xs text-slate-500 dark:text-slate-400">
-                Creado {formatDate(board.createdAt)}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
